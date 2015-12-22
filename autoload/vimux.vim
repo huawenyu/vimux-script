@@ -94,17 +94,17 @@ function! vimux#Run(command, ...)
 
   " Special keys
   if a:command ==? "<Enter>"
-    call vimux#VimuxSendKeys("Enter")
+    call vimux#VimuxSendKeys(a:command)
     return 0
   elseif a:command ==? "<Clear>"
     " ^L only clears the entire screen in readline(3) applications
     " (look for "clear-screen" in the man page).
-    call vimux#VimuxSendKeys("C-l")
+    call vimux#VimuxSendKeys("<C-l>")
     return 0
   else
     call vimux#VimuxSendText(a:command)
     if l:autoreturn == 1
-      call vimux#VimuxSendKeys("Enter")
+      call vimux#VimuxSendKeys("<Enter>")
     endif
     return 1
   endif
@@ -116,7 +116,13 @@ endfunction
 
 function! vimux#VimuxSendKeys(keys)
   if vimux#Prepare()
-    call vimux#_VimuxTmux("send-keys -t ".g:VimuxRunnerIndex." -- ".a:keys)
+    if match(a:keys, "^<.*>$") > -1
+      call vimux#_VimuxTmux("send-keys -t ".g:VimuxRunnerIndex." -- ".a:keys[1:-2])
+    elseif a:keys == "Enter"
+      call vimux#_VimuxTmux("send-keys -t ".g:VimuxRunnerIndex." -- ".a:keys)
+    else
+      call vimux#_VimuxTmux("send-keys -lt ".g:VimuxRunnerIndex." -- ".a:keys)
+    endif
   endif
 endfunction
 
@@ -208,8 +214,10 @@ function! vimux#_VimuxTmux(arguments)
   " Prefix space to skip history
   if g:VimuxDebug
     echom "tmux> " . l:command . " " . a:arguments
+    return system(l:command . " " . a:arguments)
+  else
+    return system(" " . l:command . " " . a:arguments)
   endif
-  return system(" " . l:command . " " . a:arguments)
 endfunction
 
 function! vimux#_VimuxTmuxSession()
