@@ -1,3 +1,72 @@
+function! vimuxscript#execute_selection(sel)
+  if a:sel
+    let [lnum1, col1] = getpos("'<")[1:2]
+    let [lnum2, col2] = getpos("'>")[1:2]
+    let lines = getline(lnum1, lnum2)
+    let lines[-1] = lines[-1][: col2 - (&selection == 'inclusive' ? 1 : 2)]
+    let lines[0] = lines[0][col1 - 1:]
+
+    let i = 0
+    let l_len = len(lines) - 1
+    call vimux#VimuxOpenRunner()
+    if (l_len == 0)
+      call vimux#Run(lines[i])
+    else
+      for cmd in lines
+        if i == l_len
+          call vimux#VimuxSendText(cmd)
+        else
+          call vimux#Run(cmd)
+        endif
+
+        let i += 1
+      endfor
+    endif
+  else
+    " run current line
+    let aline = getline(line('.'))
+    if !empty(aline)
+      call vimux#Run(aline)
+    endif
+  endif
+endfunction
+
+function! vimuxscript#start_insert()
+  set paste | startinsert!
+endfunction
+
+function! vimuxscript#copy_selection()
+  if !vimux#Prepare()
+    return
+  endif
+
+  if v:count > 0 && vimux#TmuxInfoRefresh()
+    call vimux#_VimuxTmux("capture-pane "
+          \ . " -S " . (g:VimuxRunnerCursorY - v:count + 1)
+          \ . " -t " . g:VimuxRunnerIndex)
+  else
+    call vimux#_VimuxTmux("capture-pane -t ".g:VimuxRunnerIndex)
+  endif
+
+  call vimux#_VimuxTmux("save-buffer /tmp/vim.yank")
+  call vimuxscript#start_insert()
+  call vimux#_VimuxTmux("paste-buffer -t ".g:VimuxVimIndex)
+  "call vimux#_VimuxTmux("delete-buffer")
+
+  redraw!
+endfunction
+
+function! vimuxscript#_exe(cmd) abort
+  try
+    silent! redir => vimux_exe_ret
+    silent! exe "" . a:cmd
+    redir END
+  finally
+  endtry
+
+  return vimux_exe_ret
+endfunction
+
 function! vimuxscript#execute_group()
   if !vimux#Prepare()
     echom "No VimxOpenRunner."
