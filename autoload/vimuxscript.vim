@@ -67,6 +67,10 @@ function! vimuxscript#Copy()
 
   let curr_pos = vimuxscript#_TmuxInfoRefresh()
   if v:count > 0 && !empty(curr_pos)
+    if g:VimuxDebug
+      echom "vimux copy mode count: " . v:count
+    endif
+
     call vimux#_VimuxTmux("capture-pane "
           \ . " -S " . (curr_pos[2] - v:count + 1)
           \ . " -t " . g:VimuxRunnerIndex)
@@ -74,11 +78,18 @@ function! vimuxscript#Copy()
     let delta = curr_pos[0] + curr_pos[2]
           \ - g:VimuxCopyPosStart[0] - g:VimuxCopyPosStart[2]
 
+    if g:VimuxDebug
+      echom "vimux copy mode start: " . v:count
+    endif
+
     let tmux_str = " -S " . (curr_pos[2] - delta + 1)
         \ . " -t " . g:VimuxRunnerIndex
 
     call vimux#_VimuxTmux("capture-pane " . tmux_str)
   else
+    if g:VimuxDebug
+      echom "vimux copy mode screen: " . v:count
+    endif
     call vimux#_VimuxTmux("capture-pane -t ".g:VimuxRunnerIndex)
   endif
 
