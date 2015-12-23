@@ -159,7 +159,8 @@ function! vimuxscript#execute_group()
       "  endif
       "  call vimux#VimuxSendKeys('Enter')
       else
-        echom "Vimux exec group fail: invalid vimux command[" . cmd . "]"
+        let g:cmdstr = cmd
+        "echom 'Vimux exec group fail: invalid vimux command[' . cmd . ']'
       endif
     else
       let g:cmdstr = cmd
