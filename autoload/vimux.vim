@@ -26,28 +26,6 @@ function! vimux#Prepare()
   return 1
 endfunction
 
-function! vimux#TmuxInfoRefresh()
-  if !exists("g:VimuxRunnerIndex")
-    echom "TmuxInfoRefresh fail: No VimxOpenRunner."
-    return 0
-  endif
-
-  let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
-        \."s -F '#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
-
-  for view in views
-    let sizes = split(view, ' ')
-    if sizes[0] == g:VimuxRunnerIndex
-      let g:VimuxRunnerHistorySize = 0 + sizes[1]
-      let g:VimuxRunnerPaneHeight = 0 + sizes[2]
-      let g:VimuxRunnerCursorY = 0 + sizes[3]
-      return 1
-    endif
-  endfor
-
-  return 0
-endfunction
-
 function! vimux#TmuxAttachLists(A, L, P)
   return vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()."s -F '#{pane_index}'")
 endfunction

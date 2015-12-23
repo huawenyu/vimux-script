@@ -1,3 +1,23 @@
+" @return valid check use empty()
+function! vimuxscript#_TmuxInfoRefresh()
+  if !exists("g:VimuxRunnerIndex")
+    echom "TmuxInfoRefresh fail: No VimxOpenRunner."
+    return 0
+  endif
+
+  let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
+        \."s -F '#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
+
+  for view in views
+    let sizes = split(view, ' ')
+    if sizes[0] == g:VimuxRunnerIndex
+      return [0+sizes[1], 0+sizes[2], 0+sizes[3]]
+    endif
+  endfor
+
+  return 0
+endfunction
+
 function! vimuxscript#execute_selection(sel)
   if a:sel
     let [lnum1, col1] = getpos("'<")[1:2]
@@ -31,28 +51,43 @@ function! vimuxscript#execute_selection(sel)
   endif
 endfunction
 
-function! vimuxscript#start_insert()
-  set paste | startinsert!
+function! vimuxscript#_StartInsert(yankfile)
+  execute "read " . a:yankfile
 endfunction
 
-function! vimuxscript#copy_selection()
+function! vimuxscript#StartCopy()
+  let g:VimuxCopyPosStart = vimuxscript#_TmuxInfoRefresh()
+  echo "vimux copy start set succ ..."
+endfunction
+
+function! vimuxscript#Copy()
   if !vimux#Prepare()
     return
   endif
 
-  if v:count > 0 && vimux#TmuxInfoRefresh()
+  let curr_pos = vimuxscript#_TmuxInfoRefresh()
+  if v:count > 0 && !empty(curr_pos)
     call vimux#_VimuxTmux("capture-pane "
-          \ . " -S " . (g:VimuxRunnerCursorY - v:count + 1)
+          \ . " -S " . (curr_pos[2] - v:count + 1)
           \ . " -t " . g:VimuxRunnerIndex)
+  elseif exists("g:VimuxCopyPosStart") && !empty(g:VimuxCopyPosStart)
+    let delta = curr_pos[0] + curr_pos[2]
+          \ - g:VimuxCopyPosStart[0] - g:VimuxCopyPosStart[2]
+
+    let tmux_str = " -S " . (curr_pos[2] - delta + 1)
+        \ . " -t " . g:VimuxRunnerIndex
+
+    call vimux#_VimuxTmux("capture-pane " . tmux_str)
   else
     call vimux#_VimuxTmux("capture-pane -t ".g:VimuxRunnerIndex)
   endif
 
   call vimux#_VimuxTmux("save-buffer /tmp/vim.yank")
-  call vimuxscript#start_insert()
-  call vimux#_VimuxTmux("paste-buffer -t ".g:VimuxVimIndex)
+  call vimuxscript#_StartInsert("/tmp/vim.yank")
+  "call vimux#_VimuxTmux("paste-buffer -t ".g:VimuxVimIndex)
   "call vimux#_VimuxTmux("delete-buffer")
 
+  unlet! g:VimuxCopyPosStart
   redraw!
 endfunction
 
@@ -192,21 +227,17 @@ function! vimuxscript#execute_group()
     endif
 
     let capture = 0
-    let captureRefresh = 0
+    let hist_pos = []
     if match(g:cmdstr, " $") > -1
       let capture = 1
-      if vimux#TmuxInfoRefresh()
-        let captureRefresh = 1
-      endif
+      let hist_pos = vimuxscript#_TmuxInfoRefresh()
 
       call vimux#VimuxSendText(g:cmdstr)
       let data = input("input# ")
       call vimux#VimuxSendText(data)
       call vimux#VimuxSendKeys("Enter")
     else
-      if vimux#TmuxInfoRefresh()
-        let captureRefresh = 1
-      endif
+      let hist_pos = vimuxscript#_TmuxInfoRefresh()
 
       if vimux#Run(g:cmdstr)
         let capture = 1
@@ -214,24 +245,18 @@ function! vimuxscript#execute_group()
     endif
 
     if capture
-      " old sizes
-      if captureRefresh
-        let historySize = g:VimuxRunnerHistorySize
-        let paneHeight = g:VimuxRunnerPaneHeight
-        let cursorY = g:VimuxRunnerCursorY
-      endif
-
       exec "sleep " . g:VimuxGroupCaptureWait . "m"
 
       let tmux_str = ""
-      if captureRefresh && vimux#TmuxInfoRefresh()
-        let delta = g:VimuxRunnerHistorySize + g:VimuxRunnerCursorY
-              \ - historySize - cursorY
+      let curr_pos = vimuxscript#_TmuxInfoRefresh()
+      if !empty(hist_pos) && !empty(curr_pos)
+        let delta = curr_pos[0] + curr_pos[2]
+              \ - hist_pos[0] - hist_pos[2]
 
-        let tmux_str = " -S " . (g:VimuxRunnerCursorY - delta + 1)
+        let tmux_str = " -S " . (curr_pos[2] - delta + 1)
             \ . " -t " . g:VimuxRunnerIndex
       else
-        let tmux_str = " -S " . (g:VimuxRunnerCursorY - g:VimuxGroupCaptureLine + 1)
+        let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
             \ . " -t " . g:VimuxRunnerIndex
       endif
 
