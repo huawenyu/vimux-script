@@ -176,6 +176,9 @@ function! vimuxscript#execute_group()
         let g:VimuxGroupCaptureLine = 0 + cmd[10:]
         echom g:VimuxGroupCaptureLine
         continue
+      elseif match(cmd, "^<attach> ") > -1
+        call vimux#TmuxAttach(0 + cmd[9:])
+        continue
       elseif match(cmd, "^<match> ") > -1
         let g:outstr = ""
         if !empty(g:output)
