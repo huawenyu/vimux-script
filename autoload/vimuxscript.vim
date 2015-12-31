@@ -193,7 +193,19 @@ function! vimuxscript#execute_group()
         endif
 
         if !empty(m_str[1:-2])
-          let g:outstr = matchstr(g:output, m_str[1:-2])
+
+          let out_lines = split(g:output, "\n")
+          for out_line in out_lines
+            let g:outstr = matchstr(out_line, m_str[1:-2])
+            if !empty(g:outstr)
+              break
+            endif
+          endfor
+
+          if empty(g:outstr)
+            let g:outstr = matchstr(g:output, m_str[1:-2])
+          endif
+
         endif
       elseif match(cmd, "^<case> ") > -1
         let m_str = matchstr(cmd, "|.*| ")
