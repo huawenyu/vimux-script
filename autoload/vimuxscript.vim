@@ -166,6 +166,7 @@ function! vimuxscript#execute_group()
       let endwith_space = 1
     endif
     let cmd = substitute(cmd, '^\s*\(.\{-}\)\s*$', '\1', '')
+    let cmd = substitute(cmd, '^\t*\(.\{-}\)\t*$', '\1', '')
 
     " Skip comment line, empty line
     if empty(cmd) || match(cmd, "^ \\+$") > -1 || match(cmd, "^#") > -1
