@@ -160,6 +160,12 @@ function! vimuxscript#execute_group()
   for cmd in lines
     let g:last_cmdstr = g:cmdstr
     let g:cmdstr = ""
+    let endwith_space = 0
+
+    if match(cmd, " $") > -1
+      let endwith_space = 1
+    endif
+    let cmd = substitute(cmd, '^\s*\(.\{-}\)\s*$', '\1', '')
 
     " Skip comment line, empty line
     if empty(cmd) || match(cmd, "^ \\+$") > -1 || match(cmd, "^#") > -1
@@ -242,7 +248,7 @@ function! vimuxscript#execute_group()
 
     let capture = 0
     let hist_pos = []
-    if match(g:cmdstr, " $") > -1
+    if endwith_space
       let capture = 1
       let hist_pos = vimuxscript#_TmuxInfoRefresh()
 
