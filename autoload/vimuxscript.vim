@@ -113,6 +113,23 @@ function! vimuxscript#_exe(cmd) abort
   return vimux_exe_ret
 endfunction
 
+function! vimuxscript#execute_group_byname(groupname)
+  if !vimux#Prepare()
+    echom "No VimxOpenRunner."
+    return
+  endif
+
+  let group_name = substitute(a:groupname, '^\s*\(.\{-}\)\s*$', '\1', '')
+  let group_name = substitute(group_name, '^\t*\(.\{-}\)\t*$', '\1', '')
+
+  let line = search('\<' . group_name . '\>')
+  if line > 0
+    norm j
+    call vimuxscript#execute_group()
+  endif
+
+endfunction
+
 function! vimuxscript#execute_group()
   if !vimux#Prepare()
     echom "No VimxOpenRunner."
@@ -186,6 +203,9 @@ function! vimuxscript#execute_group()
       elseif match(cmd, "^<attach> ") > -1
         call vimux#TmuxAttach(0 + cmd[9:])
         continue
+      elseif match(cmd, "^<group> ") > -1
+        call vimuxscript#execute_group_byname(cmd[8:])
+        continue
       elseif match(cmd, "^<match> ") > -1
         let g:outstr = ""
         if !empty(g:output)
@@ -249,9 +269,9 @@ function! vimuxscript#execute_group()
         redir END
 
         let eval_out = strtrans(eval_out_)
-        echom "wilson: ".eval_out. " ". varstr_
+        "echom "wilson: ".eval_out. " ". varstr_
         let g:cmdstr = substitute(g:cmdstr, "$<.*>", eval_out[2:], "")
-        echom "wilson: ".g:cmdstr
+        "echom "wilson: ".g:cmdstr
       endif
     endwhile
 
