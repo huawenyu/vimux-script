@@ -1,0 +1,96 @@
+gdb_debug {{{1
+	all {{{2
+	<group> box_log
+	<group> box_gdbserver_init
+	<group> box_gdbserver_attach
+	<group> linux_gdb
+	}}}
+
+	all_log {{{2
+	<group> box_log
+
+	# Caputre net
+	<attach> 4
+	tshark -i eth0 -i vmnet1 -w /tmp/pcap.1
+
+	# Check crash
+	<group> box_crash
+	<label> check_again
+	diag debug crash read
+	<goto> check_again
+
+	}}}
+
+	box_log {{{2
+	<attach> 2
+
+	plink -telnet 10.1.2.124 | tee /tmp/log.tel
+	admin
+	<Enter>
+
+	diag debug console no-user-log-msg enable
+	diag debug app wad -1
+	diag debug enable
+	}}}
+	
+	box_gdbserver {{{2
+		box_gdbserver_init {{{3
+		<attach> 3
+
+		telnet 10.1.2.124
+		admin
+		<Enter>
+
+		diag debug console no-user-log-msg enable
+		diag test app wad 2200
+		diag test app wad 7
+		<match> Set watchdog .*\.
+		<case> |enable.| diag test app wad 7
+		sys sh
+		}}}
+
+		box_gdbserver_attach {{{3
+		<attach> 3
+
+		ps | grep wad
+		<match> ^.*/bin/wad 6 0
+		<eval> echom g:outstr
+		gdbserver :444 --attach $<g:outstr[0:2]>
+		}}}
+
+	linux_gdb {{{2
+	<attach> 4
+	target remote 10.1.2.124:444
+	br wad_rtmpt_create_request_line
+	continue
+	}}}
+
+}}}
+
+box_log {{{1
+<attach> 2
+plink -telnet 10.1.2.124 | tee /tmp/log.tel
+admin
+<Enter>
+
+diag debug console no-user-log-msg enable
+diag debug app wad -1
+diag debug enable
+}}}
+
+box_crash {{{1
+<attach> 3
+telnet 10.1.2.124
+admin
+<Enter>
+
+diag debug crash read
+}}}
+
+test {{{1
+<attach> 2
+ls
+<match> 10vd.out .*
+<case> |config| ls -l $<g:outstr2>
+}}}
+

@@ -116,14 +116,19 @@ function! vimuxscript#ExecuteGroupByname(groupname)
         return
     endif
 
-    let group_name = substitute(a:groupname, '^\s*\(.\{-}\)\s*$', '\1', '')
-    let group_name = substitute(group_name, '^\t*\(.\{-}\)\t*$', '\1', '')
-
-    let line = search('\<' . group_name . '\>')
+    let line = search('\<' . a:groupname . '\>.*{{{\d', 'n')
+    "echom a:groupname . " search=" line
     if line > 0
-        norm j
-        call vimuxscript#ExecuteGroup()
+        let region = vimuxscript#_GetRegion(line)
+        if !empty(region)
+            let sp_old = g:cur_line
+            call vimuxscript#_ExecuteRegion(region[0], region[1])
+            let g:cur_line = sp_old
+            return
+        endif
     endif
+
+    echoerr "Execute Byname fail: " . a:groupname
 endfunction
 
 function! vimuxscript#_GetParams(cmdstr)
@@ -140,38 +145,47 @@ function! vimuxscript#_GetParams(cmdstr)
     return params
 endfunction
 
+function! vimuxscript#_GetRegion(linenum)
+    let group_start = -1
+    let group_end = -1
+    let max_end = line('$')
+
+    let find_line = a:linenum
+    while group_start == -1 && find_line >= 0
+        if match(getline(find_line), "{{{\\d\\+") > -1
+            let group_start = find_line + 1
+        endif
+
+        let find_line -= 1
+    endwhile
+
+    let find_line = a:linenum
+    while group_end == -1 && find_line <= max_end
+        if match(getline(find_line), "}}}") > -1
+            let group_end = find_line - 1
+        endif
+
+        let find_line += 1
+    endwhile
+
+    if group_start == -1 || group_end == -1
+        echoerr "Execute GetRegion fail, line=".a:linenum." ".group_start."~".group_end.": ". getline(a:linenum)
+        return 0
+    endif
+
+    return [group_start, group_end]
+endfunction
+
 function! vimuxscript#ExecuteGroup()
     if !vimux#Prepare()
         echom "No VimxOpenRunner."
         return
     endif
 
-    " search group's start & end
-    let group_start = -1
-    let group_end = -1
-    let cur_line = line('.')
-    let offset = 0
-    while (1)
-        if group_start == -1 && match(getline(cur_line - offset), "{{{\\d\\+") > -1
-            let group_start = cur_line - offset + 1
-        endif
-
-        if group_end == -1 && match(getline(cur_line + offset), "}}}") > -1
-            let group_end = cur_line + offset - 1
-        endif
-
-        let offset += 1
-        if offset > g:VimuxGroupMaxLines
-            echom "vimux execute group fail: region larger than " . g:VimuxGroupMaxLines
-            return
-        endif
-
-        if group_start != -1 && group_end != -1
-            break
-        endif
-    endwhile
-
-    call vimuxscript#_ExecuteRegion(group_start, group_end)
+    let region = vimuxscript#_GetRegion(line("."))
+    if !empty(region)
+        call vimuxscript#_ExecuteRegion(region[0], region[1])
+    endif
 endfunction
 
 function! vimuxscript#_Capture(hist_pos)
