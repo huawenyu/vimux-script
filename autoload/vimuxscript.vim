@@ -116,14 +116,19 @@ function! vimuxscript#ExecuteGroupByname(groupname)
         return
     endif
 
+    if !exists("g:sp_vimux")
+        let g:sp_vimux = line('.')
+    endif
+
     let line = search('\<' . a:groupname . '\>.*{{{\d', 'n')
     "echom a:groupname . " search=" line
     if line > 0
         let region = vimuxscript#_GetRegion(line)
         if !empty(region)
-            let sp_old = g:cur_line
+            let sp_old = g:sp_vimux
             call vimuxscript#_ExecuteRegion(region[0], region[1])
-            let g:cur_line = sp_old
+            let g:sp_vimux = sp_old
+            call cursor(g:sp_vimux, 1)
             return
         endif
     endif
@@ -244,13 +249,13 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
     elseif match(a:cmdline, "^<goto> ") > -1
         let l_label = search('<label>.*' . params, 'bW')
         if l_label > 0
-            let g:cur_line = l_label + 1
+            let g:sp_vimux = l_label + 1
             sleep
             return 0
         else
             let l_label = search('<label>.*' . params, 'W')
             if l_label > 0
-                let g:cur_line = l_label + 1
+                let g:sp_vimux = l_label + 1
                 sleep
                 return 0
             endif
@@ -390,18 +395,27 @@ endfunction
 " @return -1 stop
 "          0 succ and continue next command
 "          1 succ and try more process like capture output or sleep
-function! vimuxscript#_ExecuteOneLine(cmdline)
+function! vimuxscript#_ExecuteOneLine(cmdline_)
+    let cmdline = a:cmdline_
+
+    " Trim space and tab
+    if match(cmdline, " $") > -1
+        let endwith_space = 1
+    endif
+    let cmdline = substitute(cmdline, '^\s*\(.\{-}\)\s*$', '\1', '')
+    let cmdline = substitute(cmdline, '^\t*\(.\{-}\)\t*$', '\1', '')
+
     " Skip comment line, empty line
-    if empty(a:cmdline) || match(a:cmdline, "^ \\+$") > -1 || match(a:cmdline, "^#") > -1
+    if empty(cmdline) || match(cmdline, "^ \\+$") > -1 || match(cmdline, "^#") > -1
         return 0
-    elseif match(a:cmdline, "^<.*>") > -1
-        let ret = vimuxscript#_ExecuteInnnerAction(a:cmdline)
+    elseif match(cmdline, "^<.*>") > -1
+        let ret = vimuxscript#_ExecuteInnnerAction(cmdline)
         " Have execute cmdstr
         if (ret < 1)
             return ret
         endif
     else
-        let g:cmdstr = a:cmdline
+        let g:cmdstr = cmdline
     endif
 
     return vimuxscript#_ExecuteCmd(g:cmdstr)
@@ -426,24 +440,16 @@ function! vimuxscript#_ExecuteRegion(start, end)
     let g:last_cmdstr = ""
 
     let l_count = 0
-    let g:cur_line = a:start
-    while (g:cur_line <= a:end && l_count < 1000)
+    let g:sp_vimux = a:start
+    while (g:sp_vimux <= a:end && l_count < 1000)
         let l_count += 1
-        let cmd = getline(g:cur_line)
-        call cursor(g:cur_line, 1)
-        let g:cur_line += 1
+        let cmd = getline(g:sp_vimux)
+        call cursor(g:sp_vimux, 1)
+        let g:sp_vimux += 1
         "echom cmd
 
         let g:last_cmdstr = g:cmdstr
         let g:cmdstr = ""
-        let endwith_space = 0
-
-        " Trim space and tab
-        if match(cmd, " $") > -1
-            let endwith_space = 1
-        endif
-        let cmd = substitute(cmd, '^\s*\(.\{-}\)\s*$', '\1', '')
-        let cmd = substitute(cmd, '^\t*\(.\{-}\)\t*$', '\1', '')
 
         let ret = vimuxscript#_ExecuteOneLine(cmd)
         if (ret == 0)
