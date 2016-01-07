@@ -221,7 +221,7 @@ endfunction
 
 " Inner script command:
 " <return> <info> <capture> <attach>
-" <group> <label> <goto>
+" <call> <label> <goto>
 " <match> <case>
 " <eval>
 function! vimuxscript#_ExecuteInnnerAction(cmdline)
@@ -241,7 +241,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
     elseif match(a:cmdline, "^<attach> ") > -1
         call vimux#TmuxAttach(0 + params)
         return 0
-    elseif match(a:cmdline, "^<group> ") > -1
+    elseif match(a:cmdline, "^<call> ") > -1
         call vimuxscript#ExecuteGroupByname(params)
         return 0
     elseif match(a:cmdline, "^<label> ") > -1
