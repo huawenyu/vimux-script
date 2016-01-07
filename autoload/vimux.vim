@@ -37,7 +37,7 @@ function! vimux#TmuxAttach(runner)
   endif
 
   let g:VimuxRunnerIndex = a:runner
-  echom "Vimux attach succ: pane-index " . a:runner
+  "echom "Vimux attach succ: pane-index " . a:runner
   return 1
 endfunction
 

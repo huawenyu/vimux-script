@@ -1,328 +1,445 @@
 " @return valid check use empty()
 function! vimuxscript#_TmuxInfoRefresh()
-  if !exists("g:VimuxRunnerIndex")
-    echom "TmuxInfoRefresh fail: No VimxOpenRunner."
-    return 0
-  endif
-
-  let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
-        \."s -F '#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
-
-  for view in views
-    let sizes = split(view, ' ')
-    if sizes[0] == g:VimuxRunnerIndex
-      return [0+sizes[1], 0+sizes[2], 0+sizes[3]]
+    if !exists("g:VimuxRunnerIndex")
+        echom "TmuxInfoRefresh fail: No VimxOpenRunner."
+        return 0
     endif
-  endfor
 
-  return 0
+    let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
+                \."s -F '#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
+
+    for view in views
+        let sizes = split(view, ' ')
+        if sizes[0] == g:VimuxRunnerIndex
+            return [0+sizes[1], 0+sizes[2], 0+sizes[3]]
+        endif
+    endfor
+
+    return 0
 endfunction
 
-function! vimuxscript#execute_selection(sel)
-  if a:sel
-    let [lnum1, col1] = getpos("'<")[1:2]
-    let [lnum2, col2] = getpos("'>")[1:2]
-    let lines = getline(lnum1, lnum2)
-    let lines[-1] = lines[-1][: col2 - (&selection == 'inclusive' ? 1 : 2)]
-    let lines[0] = lines[0][col1 - 1:]
+function! vimuxscript#ExecuteSelection(sel)
+    if a:sel
+        let [lnum1, col1] = getpos("'<")[1:2]
+        let [lnum2, col2] = getpos("'>")[1:2]
+        let lines = getline(lnum1, lnum2)
+        let lines[-1] = lines[-1][: col2 - (&selection == 'inclusive' ? 1 : 2)]
+        let lines[0] = lines[0][col1 - 1:]
 
-    let i = 0
-    let l_len = len(lines) - 1
-    call vimux#VimuxOpenRunner()
-    if (l_len == 0)
-      call vimux#Run(lines[i])
-    else
-      for cmd in lines
-        if i == l_len
-          call vimux#VimuxSendText(cmd)
+        let i = 0
+        let l_len = len(lines) - 1
+        call vimux#VimuxOpenRunner()
+        if (l_len == 0)
+            call vimux#Run(lines[i])
         else
-          call vimux#Run(cmd)
-        endif
+            for cmd in lines
+                if i == l_len
+                    call vimux#VimuxSendText(cmd)
+                else
+                    call vimuxscript#_ExecuteOneLine(cmd)
+                endif
 
-        let i += 1
-      endfor
+                let i += 1
+            endfor
+        endif
+    else
+        " run current line
+        call vimuxscript#_ExecuteOneLine(getline(line('.')))
     endif
-  else
-    " run current line
-    let aline = getline(line('.'))
-    if !empty(aline)
-      call vimux#Run(aline)
-    endif
-  endif
 endfunction
 
 function! vimuxscript#_StartInsert(yankfile)
-  execute "read " . a:yankfile
+    execute "read " . a:yankfile
 endfunction
 
 function! vimuxscript#StartCopy()
-  let g:VimuxCopyPosStart = vimuxscript#_TmuxInfoRefresh()
-  echo "vimux copy start set succ ..."
+    let g:VimuxCopyPosStart = vimuxscript#_TmuxInfoRefresh()
+    echo "vimux copy start set succ ..."
 endfunction
 
 function! vimuxscript#Copy()
-  if !vimux#Prepare()
-    return
-  endif
-
-  let curr_pos = vimuxscript#_TmuxInfoRefresh()
-  if v:count > 0 && !empty(curr_pos)
-    if g:VimuxDebug
-      echom "vimux copy mode count: " . v:count
-    endif
-
-    call vimux#_VimuxTmux("capture-pane "
-          \ . " -S " . (curr_pos[2] - v:count + 1)
-          \ . " -t " . g:VimuxRunnerIndex)
-  elseif exists("g:VimuxCopyPosStart") && !empty(g:VimuxCopyPosStart)
-    let delta = curr_pos[0] + curr_pos[2]
-          \ - g:VimuxCopyPosStart[0] - g:VimuxCopyPosStart[2]
-
-    if g:VimuxDebug
-      echom "vimux copy mode start: " . v:count
-    endif
-
-    let tmux_str = " -S " . (curr_pos[2] - delta + 1)
-        \ . " -t " . g:VimuxRunnerIndex
-
-    call vimux#_VimuxTmux("capture-pane " . tmux_str)
-  else
-    if g:VimuxDebug
-      echom "vimux copy mode screen: " . v:count
-    endif
-    call vimux#_VimuxTmux("capture-pane -t ".g:VimuxRunnerIndex)
-  endif
-
-  call vimux#_VimuxTmux("save-buffer /tmp/vim.yank")
-  call vimuxscript#_StartInsert("/tmp/vim.yank")
-  "call vimux#_VimuxTmux("paste-buffer -t ".g:VimuxVimIndex)
-  "call vimux#_VimuxTmux("delete-buffer")
-
-  unlet! g:VimuxCopyPosStart
-  redraw!
-endfunction
-
-function! vimuxscript#_exe(cmd) abort
-  try
-    silent! redir => vimux_exe_ret
-    silent! exe "" . a:cmd
-    redir END
-  finally
-  endtry
-
-  return vimux_exe_ret
-endfunction
-
-function! vimuxscript#execute_group_byname(groupname)
-  if !vimux#Prepare()
-    echom "No VimxOpenRunner."
-    return
-  endif
-
-  let group_name = substitute(a:groupname, '^\s*\(.\{-}\)\s*$', '\1', '')
-  let group_name = substitute(group_name, '^\t*\(.\{-}\)\t*$', '\1', '')
-
-  let line = search('\<' . group_name . '\>')
-  if line > 0
-    norm j
-    call vimuxscript#execute_group()
-  endif
-
-endfunction
-
-function! vimuxscript#execute_group()
-  if !vimux#Prepare()
-    echom "No VimxOpenRunner."
-    return
-  endif
-
-  " search group's start & end
-  let group_start = -1
-  let group_end = -1
-  let cur_line = line('.')
-  let offset = 0
-  while (1)
-    if group_start == -1 && match(getline(cur_line - offset), "{{{\\d\\+") > -1
-      let group_start = cur_line - offset + 1
-    endif
-
-    if group_end == -1 && match(getline(cur_line + offset), "}}}") > -1
-      let group_end = cur_line + offset - 1
-    endif
-
-    let offset += 1
-    if offset > g:VimuxGroupMaxLines
-      echom "vimux execute group fail: region larger than " . g:VimuxGroupMaxLines
-      return
-    endif
-
-    if group_start != -1 && group_end != -1
-      break
-    endif
-  endwhile
-
-  " Execute the group
-  "   cmd begin with #: comment
-  "   cmd end with <CR>: run command
-  "   cmd end with space: send text and waiting to send your input
-  "   cmd begin with eval: eval as vimscript
-  "   var 'g:output': the runner command's g:output
-  "   var 'g:outstr': the return of the matchstr(g:output, 'substr')
-  let g:output = ""
-  let g:outstr = ""
-  let g:cmdstr = ""
-  let g:last_cmdstr = ""
-
-  let lines = getline(group_start, group_end)
-  for cmd in lines
-    let g:last_cmdstr = g:cmdstr
-    let g:cmdstr = ""
-    let endwith_space = 0
-
-    if match(cmd, " $") > -1
-      let endwith_space = 1
-    endif
-    let cmd = substitute(cmd, '^\s*\(.\{-}\)\s*$', '\1', '')
-    let cmd = substitute(cmd, '^\t*\(.\{-}\)\t*$', '\1', '')
-
-    " Skip comment line, empty line
-    if empty(cmd) || match(cmd, "^ \\+$") > -1 || match(cmd, "^#") > -1
-      continue
-    elseif match(cmd, "^<.*>") > -1
-      if match(cmd, "^<return>") > -1
+    if !vimux#Prepare()
         return
-      elseif match(cmd, "^<info>") > -1
-        echom "Info:\n"
-              \."  cmdstr[".g:last_cmdstr."]\n"
-              \."  outstr[".g:outstr."]\n"
-              \."  output[".g:output[-20:]."]\n\n"
-      elseif match(cmd, "^<capture> ") > -1
-        let g:VimuxGroupCaptureLine = 0 + cmd[10:]
-        echom g:VimuxGroupCaptureLine
-        continue
-      elseif match(cmd, "^<attach> ") > -1
-        call vimux#TmuxAttach(0 + cmd[9:])
-        continue
-      elseif match(cmd, "^<group> ") > -1
-        call vimuxscript#execute_group_byname(cmd[8:])
-        continue
-      elseif match(cmd, "^<match> ") > -1
-        let g:outstr = ""
-        if !empty(g:output)
-          let m_str = matchstr(cmd, "|.*|$")
+    endif
+
+    let curr_pos = vimuxscript#_TmuxInfoRefresh()
+    if v:count > 0 && !empty(curr_pos)
+        if g:VimuxDebug
+            echom "vimux copy mode count: " . v:count
         endif
 
-        if !empty(m_str[1:-2])
-
-          let out_lines = split(g:output, "\n")
-          for out_line in out_lines
-            let g:outstr = matchstr(out_line, m_str[1:-2])
-            if !empty(g:outstr)
-              break
-            endif
-          endfor
-
-          if empty(g:outstr)
-            let g:outstr = matchstr(g:output, m_str[1:-2])
-          endif
-
-        endif
-      elseif match(cmd, "^<case> ") > -1
-        let m_str = matchstr(cmd, "|.*| ")
-        if match(g:outstr, m_str[1:-3]) > -1
-          let g:cmdstr = cmd[(7 + len(m_str)) : ]
-        endif
-      elseif match(cmd, "^<eval> ") > -1
-        execute cmd[7:]
-      "elseif match(cmd, ' <eval> ') > -1
-      "  let pos = match(cmd, ' <eval> ')
-      "  call vimux#VimuxSendText(cmd[:pos])
-
-      "  silent! redir => eval_out
-      "  execute cmd[pos + 8:]
-      "  redir END
-
-      "  if len(eval_out) > 1
-      "    call vimux#VimuxSendText(eval_out[1:])
-      "  endif
-      "  call vimux#VimuxSendKeys('Enter')
-      else
-        let g:cmdstr = cmd
-        "echom 'Vimux exec group fail: invalid vimux command[' . cmd . ']'
-      endif
-    else
-      let g:cmdstr = cmd
-    endif
-
-    if empty(g:cmdstr)
-      continue
-    endif
-
-    " solve variable
-    while match(g:cmdstr, "$<.*>") > -1
-      let varstr_ = matchstr(g:cmdstr, "$<.*>")
-      let varstr = varstr_[2:-2]
-      if !empty(varstr)
-        "strtrans()
-        silent! redir => eval_out_
-        execute "echo " . varstr
-        redir END
-
-        let eval_out = strtrans(eval_out_)
-        "echom "wilson: ".eval_out. " ". varstr_
-        let g:cmdstr = substitute(g:cmdstr, "$<.*>", eval_out[2:], "")
-        "echom "wilson: ".g:cmdstr
-      endif
-    endwhile
-
-    if empty(g:cmdstr)
-      continue
-    endif
-
-    let capture = 0
-    let hist_pos = []
-    if endwith_space
-      let capture = 1
-      let hist_pos = vimuxscript#_TmuxInfoRefresh()
-
-      call vimux#VimuxSendText(g:cmdstr)
-      let data = input("input# ")
-      call vimux#VimuxSendText(data)
-      call vimux#VimuxSendKeys("Enter")
-    else
-      let hist_pos = vimuxscript#_TmuxInfoRefresh()
-
-      if vimux#Run(g:cmdstr)
-        let capture = 1
-      endif
-    endif
-
-    if capture
-      exec "sleep " . g:VimuxGroupCaptureWait . "m"
-
-      let tmux_str = ""
-      let curr_pos = vimuxscript#_TmuxInfoRefresh()
-      if !empty(hist_pos) && !empty(curr_pos)
+        call vimux#_VimuxTmux("capture-pane "
+                    \ . " -S " . (curr_pos[2] - v:count + 1)
+                    \ . " -t " . g:VimuxRunnerIndex)
+    elseif exists("g:VimuxCopyPosStart") && !empty(g:VimuxCopyPosStart)
         let delta = curr_pos[0] + curr_pos[2]
-              \ - hist_pos[0] - hist_pos[2]
+                    \ - g:VimuxCopyPosStart[0] - g:VimuxCopyPosStart[2]
+
+        if g:VimuxDebug
+            echom "vimux copy mode start: " . v:count
+        endif
 
         let tmux_str = " -S " . (curr_pos[2] - delta + 1)
-            \ . " -t " . g:VimuxRunnerIndex
-      else
-        let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
-            \ . " -t " . g:VimuxRunnerIndex
-      endif
+                    \ . " -t " . g:VimuxRunnerIndex
 
-      if !empty(tmux_str)
+        call vimux#_VimuxTmux("capture-pane " . tmux_str)
+    else
+        if g:VimuxDebug
+            echom "vimux copy mode screen: " . v:count
+        endif
+        call vimux#_VimuxTmux("capture-pane -t ".g:VimuxRunnerIndex)
+    endif
+
+    call vimux#_VimuxTmux("save-buffer /tmp/vim.yank")
+    call vimuxscript#_StartInsert("/tmp/vim.yank")
+    "call vimux#_VimuxTmux("paste-buffer -t ".g:VimuxVimIndex)
+    "call vimux#_VimuxTmux("delete-buffer")
+
+    unlet! g:VimuxCopyPosStart
+    redraw!
+endfunction
+
+function! vimuxscript#_Exe(cmd) abort
+    try
+        silent! redir => vimux_exe_ret
+        silent! exe "" . a:cmd
+        redir END
+    finally
+    endtry
+
+    return vimux_exe_ret
+endfunction
+
+function! vimuxscript#ExecuteGroupByname(groupname)
+    if !vimux#Prepare()
+        echom "No VimxOpenRunner."
+        return
+    endif
+
+    let group_name = substitute(a:groupname, '^\s*\(.\{-}\)\s*$', '\1', '')
+    let group_name = substitute(group_name, '^\t*\(.\{-}\)\t*$', '\1', '')
+
+    let line = search('\<' . group_name . '\>')
+    if line > 0
+        norm j
+        call vimuxscript#ExecuteGroup()
+    endif
+endfunction
+
+function! vimuxscript#_GetParams(cmdstr)
+    " Trim
+    let cmdstr = substitute(a:cmdstr, '^\s*\(.\{-}\)\s*$', '\1', '')
+    let cmdstr = substitute(cmdstr, '^\t*\(.\{-}\)\t*$', '\1', '')
+
+    " Get params
+    let params = substitute(cmdstr, '^<.\{-}>\(.\{-}\)$', '\1', '')
+
+    let params = substitute(params, '^\s*\(.\{-}\)\s*$', '\1', '')
+    let params = substitute(params, '^\t*\(.\{-}\)\t*$', '\1', '')
+
+    return params
+endfunction
+
+function! vimuxscript#ExecuteGroup()
+    if !vimux#Prepare()
+        echom "No VimxOpenRunner."
+        return
+    endif
+
+    " search group's start & end
+    let group_start = -1
+    let group_end = -1
+    let cur_line = line('.')
+    let offset = 0
+    while (1)
+        if group_start == -1 && match(getline(cur_line - offset), "{{{\\d\\+") > -1
+            let group_start = cur_line - offset + 1
+        endif
+
+        if group_end == -1 && match(getline(cur_line + offset), "}}}") > -1
+            let group_end = cur_line + offset - 1
+        endif
+
+        let offset += 1
+        if offset > g:VimuxGroupMaxLines
+            echom "vimux execute group fail: region larger than " . g:VimuxGroupMaxLines
+            return
+        endif
+
+        if group_start != -1 && group_end != -1
+            break
+        endif
+    endwhile
+
+    call vimuxscript#_ExecuteRegion(group_start, group_end)
+endfunction
+
+function! vimuxscript#_Capture(hist_pos)
+    let tmux_str = ""
+    let curr_pos = vimuxscript#_TmuxInfoRefresh()
+    if !empty(a:hist_pos) && !empty(curr_pos)
+        let delta = curr_pos[0] + curr_pos[2]
+                    \ - a:hist_pos[0] - a:hist_pos[2]
+
+        let tmux_str = " -S " . (curr_pos[2] - delta + 1)
+                    \ . " -t " . g:VimuxRunnerIndex
+    else
+        let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
+                    \ . " -t " . g:VimuxRunnerIndex
+    endif
+
+    if !empty(tmux_str)
         let g:output = vimux#_VimuxTmux("capture-pane -p" . tmux_str)
 
         if g:VimuxDebug
-          " So we can check the output by: tmux show-buff <or> check the file
-          call vimux#_VimuxTmux("capture-pane " . tmux_str)
-          call vimux#_VimuxTmux("save-buffer /tmp/vim.vimux")
-          "call vimux#_VimuxTmux("delete-buffer")
+            " So we can check the output by: tmux show-buff <or> check the file
+            call vimux#_VimuxTmux("capture-pane " . tmux_str)
+            call vimux#_VimuxTmux("save-buffer /tmp/vim.vimux")
+            "call vimux#_VimuxTmux("delete-buffer")
         endif
-      endif
     endif
-  endfor
+endfunction
+
+" Inner script command:
+" <return> <info> <capture> <attach>
+" <group> <label> <goto>
+" <match> <case>
+" <eval>
+function! vimuxscript#_ExecuteInnnerAction(cmdline)
+    let params = vimuxscript#_GetParams(a:cmdline)
+
+    if match(a:cmdline, "^<return>") > -1
+        return -1
+    elseif match(a:cmdline, "^<info>") > -1
+        echom "Info:\n"
+                    \."  cmdstr[".g:last_cmdstr."]\n"
+                    \."  outstr[".g:outstr."]\n"
+                    \."  output[".g:output[-20:]."]\n\n"
+        return 0
+    elseif match(a:cmdline, "^<capture> ") > -1
+        let g:VimuxGroupCaptureLine = 0 + params
+        return 0
+    elseif match(a:cmdline, "^<attach> ") > -1
+        call vimux#TmuxAttach(0 + params)
+        return 0
+    elseif match(a:cmdline, "^<group> ") > -1
+        call vimuxscript#ExecuteGroupByname(params)
+        return 0
+    elseif match(a:cmdline, "^<label> ") > -1
+        return 0
+    elseif match(a:cmdline, "^<goto> ") > -1
+        let l_label = search('<label>.*' . params, 'bW')
+        if l_label > 0
+            let g:cur_line = l_label + 1
+            sleep
+            return 0
+        else
+            let l_label = search('<label>.*' . params, 'W')
+            if l_label > 0
+                let g:cur_line = l_label + 1
+                sleep
+                return 0
+            endif
+        endif
+
+        echoerr "fail: " . a:cmdline
+    elseif match(a:cmdline, "^<match> ") > -1
+        let g:outstr = ""
+        let g:output = ""
+
+        if !exists("g:hist_pos")
+            echoerr "no g:hist_pos fail: " . a:cmdline
+            return -1
+        endif
+
+        if empty(params)
+            echoerr "no params fail: " . a:cmdline
+            return -1
+        endif
+
+        let outer_count = 0
+        while empty(g:outstr) && outer_count < 100
+            let outer_count += 1
+
+            let l_count = 0
+            while empty(g:output) && l_count < 100
+                let l_count += 1
+
+                exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                call vimuxscript#_Capture(g:hist_pos)
+            endwhile
+            if l_count == 100 || empty(g:output)
+                echoerr "capture no output after 10s: " . a:cmdline
+                return -1
+            endif
+
+            let out_lines = split(g:output, "\n")
+            for out_line in out_lines
+                let g:outstr = matchstr(out_line, params)
+                if !empty(g:outstr)
+                    break
+                endif
+            endfor
+
+            if empty(g:outstr)
+                let g:outstr = matchstr(g:output, params)
+            endif
+        endwhile
+
+        if empty(g:outstr)
+            echoerr "match fail after 10s: " . a:cmdline
+            return -1
+        else
+            return 0
+        endif
+    elseif match(a:cmdline, "^<case> ") > -1
+        let m_str = matchstr(a:cmdline, "|.*| ")
+        if empty(m_str)
+            echoerr "{<case> |case-str| command} format error: " . a:cmdline
+            return -1
+        endif
+
+        let g:outstr2 = matchstr(g:outstr, m_str[1:-3])
+        if !empty(g:outstr2)
+            let g:cmdstr = a:cmdline[(7 + len(m_str)) : ]
+            call vimuxscript#_ExecuteCmd(g:cmdstr)
+            return 0
+        endif
+    elseif match(a:cmdline, "^<eval> ") > -1
+        execute params
+        return 0
+    elseif match(a:cmdline, "^<sleep> ") > -1
+        exec "sleep " . params
+        return 0
+    else
+        let g:cmdstr = a:cmdline
+        "echom 'Vimux exec group fail: invalid vimux command[' . a:cmdline . ']'
+        return 1
+    endif
+endfunction
+
+function! vimuxscript#_ExecuteCmd(cmdline_)
+    if empty(a:cmdline_)
+        return 0
+    endif
+    let cmdline = a:cmdline_
+
+    " solve variable
+    while match(cmdline, "$<.*>") > -1
+        let varstr_ = matchstr(cmdline, "$<.*>")
+        let varstr = varstr_[2:-2]
+        if !empty(varstr)
+            "strtrans()
+            silent! redir => eval_out_
+            execute "echo " . varstr
+            redir END
+
+            let eval_out = strtrans(eval_out_)
+            "echom "wilson: ".eval_out. " ". varstr_
+            let cmdline = substitute(cmdline, "$<.*>", eval_out[2:], "")
+            "echom "wilson: ".cmdline
+        endif
+    endwhile
+
+    if empty(cmdline)
+        return 0
+    endif
+
+    " Tmux Run
+    let endwith_space = 0
+    let capture = 0
+    let hist_pos = []
+    if endwith_space
+        let capture = 1
+        let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
+
+        call vimux#VimuxSendText(cmdline)
+        let data = input("input# ")
+        call vimux#VimuxSendText(data)
+        call vimux#VimuxSendKeys("Enter")
+
+        exec "sleep " . g:VimuxGroupCommandPause . "m"
+        return 1
+    else
+        let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
+
+        if vimux#Run(cmdline)
+            let capture = 1
+            exec "sleep " . g:VimuxGroupCommandPause . "m"
+            return 1
+        endif
+    endif
+
+    return 0
+endfunction
+
+" @return -1 stop
+"          0 succ and continue next command
+"          1 succ and try more process like capture output or sleep
+function! vimuxscript#_ExecuteOneLine(cmdline)
+    " Skip comment line, empty line
+    if empty(a:cmdline) || match(a:cmdline, "^ \\+$") > -1 || match(a:cmdline, "^#") > -1
+        return 0
+    elseif match(a:cmdline, "^<.*>") > -1
+        let ret = vimuxscript#_ExecuteInnnerAction(a:cmdline)
+        " Have execute cmdstr
+        if (ret < 1)
+            return ret
+        endif
+    else
+        let g:cmdstr = a:cmdline
+    endif
+
+    return vimuxscript#_ExecuteCmd(g:cmdstr)
+endfunction
+
+function! vimuxscript#_ExecuteRegion(start, end)
+    if !vimux#Prepare()
+        echom "No VimxOpenRunner."
+        return
+    endif
+
+    " Execute the group
+    "   cmd begin with #: comment
+    "   cmd end with <CR>: run command
+    "   cmd end with space: send text and waiting to send your input
+    "   cmd begin with eval: eval as vimscript
+    "   var 'g:output': the runner command's g:output
+    "   var 'g:outstr': the return of the matchstr(g:output, 'substr')
+    let g:output = ""
+    let g:outstr = ""
+    let g:cmdstr = ""
+    let g:last_cmdstr = ""
+
+    let l_count = 0
+    let g:cur_line = a:start
+    while (g:cur_line <= a:end && l_count < 1000)
+        let l_count += 1
+        let cmd = getline(g:cur_line)
+        call cursor(g:cur_line, 1)
+        let g:cur_line += 1
+        "echom cmd
+
+        let g:last_cmdstr = g:cmdstr
+        let g:cmdstr = ""
+        let endwith_space = 0
+
+        " Trim space and tab
+        if match(cmd, " $") > -1
+            let endwith_space = 1
+        endif
+        let cmd = substitute(cmd, '^\s*\(.\{-}\)\s*$', '\1', '')
+        let cmd = substitute(cmd, '^\t*\(.\{-}\)\t*$', '\1', '')
+
+        let ret = vimuxscript#_ExecuteOneLine(cmd)
+        if (ret == 0)
+            continue
+        elseif (ret == 1)
+            " more action
+        elseif (ret == -1)
+            return
+        endif
+
+    endwhile
+
 endfunction

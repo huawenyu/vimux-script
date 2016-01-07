@@ -28,7 +28,8 @@ command VimuxTogglePane :call vimux#VimuxTogglePane()
 
 " Global Vars {{{1
 let g:VimuxGroupMaxLines = 100
-let g:VimuxGroupCaptureWait = 200
+let g:VimuxGroupCommandPause = 50
+let g:VimuxGroupCaptureWait = 100
 let g:VimuxGroupCaptureLine = 4
 " If clear vim command line, use 'q C-u'
 let g:VimuxResetSequence = "C-l"
