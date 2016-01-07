@@ -1,20 +1,20 @@
 gdb_debug {{{1
 	all {{{2
-	<group> box_log
-	<group> box_gdbserver_init
-	<group> box_gdbserver_attach
-	<group> linux_gdb
+	<call> box_log
+	<call> box_gdbserver_init
+	<call> box_gdbserver_attach
+	<call> linux_gdb
 	}}}
 
 	all_log {{{2
-	<group> box_log
+	<call> box_log
 
 	# Caputre net
 	<attach> 4
 	tshark -i eth0 -i vmnet1 -w /tmp/pcap.1
 
 	# Check crash
-	<group> box_crash
+	<call> box_crash
 	<label> check_again
 	diag debug crash read
 	<goto> check_again
