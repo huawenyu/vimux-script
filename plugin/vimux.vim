@@ -27,6 +27,7 @@ command VimuxClearRunnerHistory :call vimux#VimuxClearRunnerHistory()
 command VimuxTogglePane :call vimux#VimuxTogglePane()
 
 " Global Vars {{{1
+let g:VimuxGroupInit = "init"
 let g:VimuxGroupMaxLines = 100
 let g:VimuxGroupCommandPause = 50
 let g:VimuxGroupCaptureWait = 100

@@ -111,7 +111,7 @@ function! vimuxscript#_Exe(cmd) abort
 endfunction
 
 function! vimuxscript#ExecuteGroupByname(groupname)
-    if !vimux#Prepare()
+    if a:groupname !=# g:VimuxGroupInit && !vimux#Prepare()
         echom "No VimxOpenRunner."
         return
     endif
@@ -120,7 +120,7 @@ function! vimuxscript#ExecuteGroupByname(groupname)
         let g:sp_vimux = line('.')
     endif
 
-    let line = search('\<' . a:groupname . '\>.*{{{\d', 'n')
+    let line = search('\<' . a:groupname . '\>.\{-}{{{\d', 'wn')
     "echom a:groupname . " search=" line
     if line > 0
         let region = vimuxscript#_GetRegion(line)
@@ -133,7 +133,9 @@ function! vimuxscript#ExecuteGroupByname(groupname)
         endif
     endif
 
-    echoerr "Execute Byname fail: " . a:groupname
+    if a:groupname !=# g:VimuxGroupInit
+        echoerr 'Execute Byname fail: ' . a:groupname
+    endif
 endfunction
 
 function! vimuxscript#_GetParams(cmdstr)
@@ -229,6 +231,10 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
 
     if match(a:cmdline, "^<return>") > -1
         return -1
+    elseif match(a:cmdline, "^<let>") > -1
+        execute "let " . params
+        "echom "wilson let " . params
+        return 0
     elseif match(a:cmdline, "^<info>") > -1
         echom "Info:\n"
                     \."  cmdstr[".g:last_cmdstr."]\n"
@@ -239,7 +245,8 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
         let g:VimuxGroupCaptureLine = 0 + params
         return 0
     elseif match(a:cmdline, "^<attach> ") > -1
-        call vimux#TmuxAttach(0 + params)
+        let pane_num = vimuxscript#_ParseVars(params)
+        call vimux#TmuxAttach(0 + pane_num)
         return 0
     elseif match(a:cmdline, "^<call> ") > -1
         call vimuxscript#ExecuteGroupByname(params)
@@ -247,18 +254,11 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
     elseif match(a:cmdline, "^<label> ") > -1
         return 0
     elseif match(a:cmdline, "^<goto> ") > -1
-        let l_label = search('<label>.*' . params, 'bW')
+        let l_label = search('<label>.\{-}' . params, 'nw')
         if l_label > 0
             let g:sp_vimux = l_label + 1
             sleep
             return 0
-        else
-            let l_label = search('<label>.*' . params, 'W')
-            if l_label > 0
-                let g:sp_vimux = l_label + 1
-                sleep
-                return 0
-            endif
         endif
 
         echoerr "fail: " . a:cmdline
@@ -303,6 +303,10 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
             if empty(g:outstr)
                 let g:outstr = matchstr(g:output, params)
             endif
+
+            if empty(g:outstr)
+                exec "sleep " . g:VimuxGroupCaptureWait . "m"
+            endif
         endwhile
 
         if empty(g:outstr)
@@ -337,20 +341,21 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
     endif
 endfunction
 
-function! vimuxscript#_ExecuteCmd(cmdline_)
+function! vimuxscript#_ParseVars(cmdline_)
     if empty(a:cmdline_)
         return 0
     endif
     let cmdline = a:cmdline_
 
     " solve variable
+    "echom 'wilson executecmd: ' . cmdline
     while match(cmdline, "$<.*>") > -1
         let varstr_ = matchstr(cmdline, "$<.*>")
         let varstr = varstr_[2:-2]
         if !empty(varstr)
             "strtrans()
-            silent! redir => eval_out_
-            execute "echo " . varstr
+            redir => eval_out_
+            silent! execute "echo " . varstr
             redir END
 
             let eval_out = strtrans(eval_out_)
@@ -359,6 +364,12 @@ function! vimuxscript#_ExecuteCmd(cmdline_)
             "echom "wilson: ".cmdline
         endif
     endwhile
+
+    return cmdline
+endfunction
+
+function! vimuxscript#_ExecuteCmd(cmdline_)
+    let cmdline = vimuxscript#_ParseVars(a:cmdline_)
 
     if empty(cmdline)
         return 0
@@ -397,6 +408,11 @@ endfunction
 "          1 succ and try more process like capture output or sleep
 function! vimuxscript#_ExecuteOneLine(cmdline_)
     let cmdline = a:cmdline_
+
+    if !exists("g:vimuxscript_init")
+        let g:vimuxscript_init = 1
+        call vimuxscript#ExecuteGroupByname(g:VimuxGroupInit)
+    endif
 
     " Trim space and tab
     if match(cmdline, " $") > -1
