@@ -422,7 +422,10 @@ function! vimuxscript#_ExecuteOneLine(cmdline_)
     let cmdline = substitute(cmdline, '^\t*\(.\{-}\)\t*$', '\1', '')
 
     " Skip comment line, empty line
-    if empty(cmdline) || match(cmdline, "^ \\+$") > -1 || match(cmdline, "^#") > -1
+    if empty(cmdline)
+        \ || match(cmdline, "^ \\+$") > -1
+        \ || match(cmdline, "^#") > -1
+        \ || match(cmdline, "^\"") > -1
         return 0
     elseif match(cmdline, "^<.*>") > -1
         let ret = vimuxscript#_ExecuteInnnerAction(cmdline)

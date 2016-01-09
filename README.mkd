@@ -8,14 +8,14 @@ My goal with vimux-script is to make scriptable auto interacting with tmux from 
 
 ```
 embedded_status {{{1
-# tmux's pane index, show by prefix-q
-# <attach> means send the command to that tmux pane shell
+" tmux's pane index, show by prefix-q
+" <attach> means send the command to that tmux pane shell
 <attach> 2
 telnet 10.1.1.124
-# user:admin, and password is empty
+" user:admin, and password is empty
 admin
 <Enter>
-# the embedded box's command
+" the embedded box's command
 get system status
 }}}
 ```
@@ -55,3 +55,14 @@ _Notes:_
 ## Usage
 
 The more example is available [online](https://raw.github.com/huawenyu/vimux-script/master/example.txt).
+
+## Todo lists
+
+- [ ] Attach tmux.windows mode
+- [ ] Auto 'init' per script files
+- [ ] Add <file>
+- [ ] Script: decode crash log
+- [ ] AsyncCommand Implement
+  - [ ] grep
+  - [ ] make
+
