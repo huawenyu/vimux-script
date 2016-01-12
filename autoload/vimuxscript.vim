@@ -257,7 +257,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
         let l_label = search('<label>.\{-}' . params, 'nw')
         if l_label > 0
             let g:sp_vimux = l_label + 1
-            sleep
+            3sleep
             return 0
         endif
 
@@ -286,6 +286,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
 
                 exec "sleep " . g:VimuxGroupCaptureWait . "m"
                 call vimuxscript#_Capture(g:hist_pos)
+                let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
             endwhile
             if l_count == 100 || empty(g:output)
                 echoerr "capture no output after 10s: " . a:cmdline
@@ -306,6 +307,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
 
             if empty(g:outstr)
                 exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                let g:output = ""
             endif
         endwhile
 

@@ -96,6 +96,8 @@ function! vimux#VimuxSendKeys(keys)
   if vimux#Prepare()
     if match(a:keys, "^<.*>$") > -1
       call vimux#_VimuxTmux("send-keys -t ".g:VimuxRunnerIndex." -- ".a:keys[1:-2])
+    elseif match(a:keys, '^"<.*>"$') > -1
+      call vimux#_VimuxTmux("send-keys -t ".g:VimuxRunnerIndex." -- ".a:keys[2:-3])
     elseif a:keys == "Enter"
       call vimux#_VimuxTmux("send-keys -t ".g:VimuxRunnerIndex." -- ".a:keys)
     else
