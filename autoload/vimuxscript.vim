@@ -2,7 +2,7 @@
 function! vimuxscript#_TmuxInfoRefresh()
     if !exists("g:VimuxRunnerIndex")
         echom "TmuxInfoRefresh fail: No VimxOpenRunner."
-        return 0
+        return []
     endif
 
     let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
@@ -15,7 +15,7 @@ function! vimuxscript#_TmuxInfoRefresh()
         endif
     endfor
 
-    return 0
+    return []
 endfunction
 
 function! vimuxscript#ExecuteSelection(sel)
@@ -380,7 +380,7 @@ function! vimuxscript#_ExecuteCmd(cmdline_)
     " Tmux Run
     let endwith_space = 0
     let capture = 0
-    let hist_pos = []
+    let g:hist_pos = []
     if endwith_space
         let capture = 1
         let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
