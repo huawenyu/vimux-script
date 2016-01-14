@@ -204,7 +204,7 @@ function! vimuxscript#_Capture(hist_pos)
 
         let tmux_str = " -S " . (curr_pos[2] - delta + 1)
                     \ . " -t " . g:VimuxRunnerIndex
-    else
+    elseif !empty(curr_pos)
         let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
                     \ . " -t " . g:VimuxRunnerIndex
     endif
@@ -380,10 +380,9 @@ function! vimuxscript#_ExecuteCmd(cmdline_)
     " Tmux Run
     let endwith_space = 0
     let capture = 0
-    let g:hist_pos = []
+    let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
     if endwith_space
         let capture = 1
-        let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
 
         call vimux#VimuxSendText(cmdline)
         let data = input("input# ")
@@ -393,8 +392,6 @@ function! vimuxscript#_ExecuteCmd(cmdline_)
         exec "sleep " . g:VimuxGroupCommandPause . "m"
         return 1
     else
-        let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
-
         if vimux#Run(cmdline)
             let capture = 1
             exec "sleep " . g:VimuxGroupCommandPause . "m"
