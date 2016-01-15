@@ -14,8 +14,17 @@ endif
 
 let loaded_vimgdb = 1
 let s:vimgdb_running = 0
-let s:gdb_win_hight = 10
+let s:gdb_win_hight = 2
+let s:gdb_output_width = 10
+
 let s:gdb_buf_name = "__GDB_WINDOW__"
+let s:gdb_buf_registers = "__GDB_REG__"
+let s:gdb_buf_source = "__GDB_SRC__"
+let s:gdb_buf_assembly = "__GDB_ASM__"
+let s:gdb_buf_stack = "__GDB_STACK__"
+let s:gdb_buf_thread = "__GDB_THR__"
+let s:gdb_buf_output = "__GDB_OUTPUT__"
+
 let s:cur_line_id = 9999
 let s:prv_line_id = 9998
 let s:max_break_point = 0
@@ -27,25 +36,29 @@ highlight DebugStop guibg=lightgreen guifg=white ctermbg=lightgreen ctermfg=whit
 sign define breakpoint linehl=DebugBreak
 sign define current linehl=DebugStop
 
-" Get ready for communication
-function! s:Gdb_interf_init()
-
-	call s:Gdb_shortcuts()
-
-	"command -nargs=+ Gdb	:call Gdb_command(<q-args>, v:count)
-
-    let bufnum = bufnr(s:gdb_buf_name)
+function! s:Gdb_buf_split(buf_name, size, pos)
+    let bufnum = bufnr(a:buf_name)
 
     if bufnum == -1
         " Create a new buffer
-        let wcmd = s:gdb_buf_name
+        let wcmd = a:buf_name
     else
         " Edit the existing buffer
         let wcmd = '+buffer' . bufnum
     endif
 
     " Create the tag explorer window
-    exe 'silent!  botright ' . s:gdb_win_hight . 'split ' . wcmd
+    exe 'silent! '.a:pos.' '.a:size. ' split ' . wcmd
+endfunction
+
+" Get ready for communication
+function! s:Gdb_interf_init()
+
+	call s:Gdb_shortcuts()
+
+	"command -nargs=+ Gdb	:call Gdb_command(<q-args>, v:count)
+	"call s:Gdb_buf_split(s:gdb_buf_name, s:gdb_win_hight, "botright")
+	"call s:Gdb_buf_split(s:gdb_buf_output, s:gdb_output_width, "topright")
 
     " Mark the buffer as a scratch buffer
     setlocal buftype=nofile
@@ -60,8 +73,11 @@ function! s:Gdb_interf_init()
 		autocmd WinLeave <buffer> stopi
     augroup end
 
-    inoremap <buffer> <silent> <CR> <ESC>o<ESC>:call <SID>Gdb_command(getline(line(".")-1))<CR>
-	inoremap <buffer> <silent> <TAB> <C-P>
+	hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
+	set cursorline
+
+    "inoremap <buffer> <silent> <CR> <ESC>o<ESC>:call <SID>Gdb_command(getline(line(".")-1))<CR>
+	"inoremap <buffer> <silent> <TAB> <C-P>
 	"nnoremap <buffer> <silent> : <C-W>p:
 
 	start
@@ -71,6 +87,8 @@ function! s:Gdb_interf_init()
 endfunction
 
 function s:EnterGdbBuf()
+	return
+
 	if !s:vimgdb_running
 		return
 	endif
@@ -183,16 +201,13 @@ function s:Gdb_command(cmd)
 	let lines = ""
 	let out_count = 0
 
-	if exists("g:tmux_gdb") && !exists("g:tmux_gdb_fixed")
-		let g:tmux_gdb_fixed = g:tmux_gdb
-	endif
-
-	if exists("g:tmux_gdb_fixed")
-		let hist_pos = vimuxscript#_TmuxInfoRefresh()
-		call vimux#TmuxAttach2(g:tmux_gdb_fixed)
+	if exists("g:tmux_gdb")
+		"let hist_pos = vimuxscript#_TmuxInfoRefresh()
+		call vimux#TmuxAttach2(g:tmux_gdb)
 		call vimux#Run(a:cmd)
-		let lines = vimuxscript#_Capture(hist_pos)
+		"let lines = vimuxscript#_Capture(hist_pos)
 	endif
+	return
 
 	let index = 0
 	echom lines
@@ -278,7 +293,7 @@ endfun
 function s:Gdb_shortcuts()
 	nmap <silent> <F12>	 :call <SID>Gdb_togglebreak(bufname("%"), line("."))<CR>
 
-	nmap <silent> <F4>	 :call <SID>Gdb_command("print <C-R><C-W>")<CR> 
+	nmap <silent> <F4>	 :call <SID>Gdb_command("print <C-R><C-W>")<CR>
 	vmap <silent> <F4>	 "vy:call <SID>Gdb_command("print <C-R>v")<CR>
 	nmap <silent> <F5>	 :call <SID>Gdb_command("next")<CR>
 	nmap <silent> <F6>	 :call <SID>Gdb_command("step")<CR>
@@ -288,10 +303,4 @@ function s:Gdb_shortcuts()
 endfunction
 
 command! GdbMode call <SID>Gdb_interf_init()
-nmap <silent> <F2> 	 :GdbMode<CR>
-
-if match(v:servername, "GDB.") > -1
-	hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
-	call <SID>Gdb_interf_init()
-endif
-
+"nmap <silent> <F2> 	 :GdbMode<CR>
