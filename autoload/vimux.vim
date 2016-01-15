@@ -41,6 +41,12 @@ function! vimux#TmuxAttach(runner)
   return 1
 endfunction
 
+function! vimux#TmuxAttach2(runner)
+  let g:VimuxRunnerIndex = a:runner
+  "echom "Vimux attach succ: window-index.pane-index " . a:runner
+  return 1
+endfunction
+
 function! vimux#RunInDir(command, useFile)
     let l:file = ""
     if a:useFile ==# 1

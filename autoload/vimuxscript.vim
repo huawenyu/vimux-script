@@ -218,7 +218,11 @@ function! vimuxscript#_Capture(hist_pos)
             call vimux#_VimuxTmux("save-buffer /tmp/vim.vimux")
             "call vimux#_VimuxTmux("delete-buffer")
         endif
+
+        return g:output
     endif
+
+    return ""
 endfunction
 
 " Inner script command:
