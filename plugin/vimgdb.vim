@@ -13,6 +13,11 @@ if exists("loaded_vimgdb")
 endif
 
 let loaded_vimgdb = 1
+
+" import from gdb-dashboard
+"let g:tmux_gdb = ""
+"let g:tmux_gdb_dir = ""
+
 let s:vimgdb_running = 0
 let s:gdb_win_hight = 2
 let s:gdb_output_width = 10
@@ -74,7 +79,6 @@ function! s:Gdb_interf_init()
     augroup end
 
 	hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
-	set cursorline
 
     "inoremap <buffer> <silent> <CR> <ESC>o<ESC>:call <SID>Gdb_command(getline(line(".")-1))<CR>
 	"inoremap <buffer> <silent> <TAB> <C-P>
@@ -284,10 +288,34 @@ function s:Gdb_togglebreak(name, line)
 	endwhile
 
 	if found == 1
+		exec "HightlightOff"
 		call s:Gdb_command("clear ".a:name.":".a:line)
 	else
+		exec "HightlightOn"
 		call s:Gdb_command("break ".a:name.":".a:line)
 	endif
+endfun
+
+" Refresh files
+function s:Gdb_refresh_files(name, line)
+	let src = 0
+	let currentWinNr = winnr()
+	let gdb_dir = exists("g:tmux_gdb_dir")
+	for nr in range(1, winnr('$'))
+		silent exec nr . "wincmd w"
+		set nomodifiable
+
+		let fname = bufname(winbufnr(0))
+		if gdb_dir && match(fname, g:tmux_gdb_dir) > -1
+			silent e!
+			set nocursorline
+		elseif src == 0
+			let src = nr
+			silent exec "e! +".a:line." ".a:name
+			set cursorline
+		endif
+	endfor
+	silent exec currentWinNr . 'wincmd w'
 endfun
 
 function s:Gdb_shortcuts()
@@ -303,4 +331,5 @@ function s:Gdb_shortcuts()
 endfunction
 
 command! GdbMode call <SID>Gdb_interf_init()
+command -nargs=* GdbRefresh call <SID>Gdb_refresh_files(<f-args>)
 "nmap <silent> <F2> 	 :GdbMode<CR>

@@ -6,7 +6,7 @@ function! vimuxscript#_TmuxInfoRefresh()
     endif
 
     let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
-                \."s -F '#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
+                \."s -F '#{window_index}.#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
 
     for view in views
         let sizes = split(view, ' ')
@@ -413,7 +413,10 @@ function! vimuxscript#_ExecuteOneLine(cmdline_)
     let cmdline = a:cmdline_
 
     if !exists("g:vimuxscript_init")
-        let g:vimuxscript_init = 1
+        let g:vimuxscript_init = getftime(expand('%'))
+        call vimuxscript#ExecuteGroupByname(g:VimuxGroupInit)
+    elseif g:vimuxscript_init != getftime(expand('%'))
+        let g:vimuxscript_init = getftime(expand('%'))
         call vimuxscript#ExecuteGroupByname(g:VimuxGroupInit)
     endif
 
