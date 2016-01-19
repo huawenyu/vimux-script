@@ -327,7 +327,7 @@ function s:Gdb_refresh_files(name, line)
 	let gdb_dir = exists("g:tmux_gdb_dir")
 	for nr in range(1, winnr('$'))
 		silent exec nr . "wincmd w"
-		set nomodifiable
+		"set nomodifiable
 
 		let fname = bufname(winbufnr(0))
 		if gdb_dir && match(fname, g:tmux_gdb_dir) > -1
