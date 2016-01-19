@@ -224,10 +224,15 @@ function s:Gdb_command(cmd)
 	let lines = ""
 	let out_count = 0
 
+	let cmd_str = a:cmd
+	if cmd_str == "until"
+		let cmd_str += " ".line('.')
+	endif
+
 	if exists("g:tmux_gdb")
 		"let hist_pos = vimuxscript#_TmuxInfoRefresh()
 		call vimux#TmuxAttach2(g:tmux_gdb)
-		call vimux#Run(a:cmd)
+		call vimux#Run(cmd_str)
 		"let lines = vimuxscript#_Capture(hist_pos)
 	endif
 	return
@@ -356,9 +361,10 @@ function s:Gdb_shortcuts()
 	nmap <silent> <F5>	 :call <SID>Gdb_command("next")<CR>
 	nmap <silent> <F6>	 :call <SID>Gdb_command("step")<CR>
 	nmap <silent> <F7>	 :call <SID>Gdb_command("finish")<CR>
-	nmap <silent> <F8>	 :call <SID>Gdb_command("continue")<CR>
+	nmap <silent> <F8>	 :call <SID>Gdb_command("until")<CR>
 
-	nmap <silent> <F9>	 :call <SID>Gdb_command("run")<CR>
+	nmap <silent> <F9>	 :call <SID>Gdb_command("continue")<CR>
+	nmap <silent> <F10>	 :call <SID>Gdb_command("run")<CR>
 endfunction
 
 command! -nargs=* -complete=custom,<SID>GdbMode_complete GdbMode call <SID>Gdb_interf_init(<f-args>)
