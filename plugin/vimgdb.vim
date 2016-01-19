@@ -17,18 +17,22 @@ let loaded_vimgdb = 1
 " import from gdb-dashboard
 "let g:tmux_gdb = ""
 "let g:tmux_gdb_dir = ""
+let s:gdb_servername = "GDB.SOURCE"
 
 let s:vimgdb_running = 0
 let s:gdb_win_hight = 2
 let s:gdb_output_width = 10
 
 let s:gdb_buf_name = "__GDB_WINDOW__"
-let s:gdb_buf_registers = "__GDB_REG__"
-let s:gdb_buf_source = "__GDB_SRC__"
-let s:gdb_buf_assembly = "__GDB_ASM__"
-let s:gdb_buf_stack = "__GDB_STACK__"
-let s:gdb_buf_thread = "__GDB_THR__"
-let s:gdb_buf_output = "__GDB_OUTPUT__"
+let s:gdb_buf_registers = "/tmp/gdb/registers.txt"
+let s:gdb_buf_assembly = "/tmp/gdb/assembly.txt"
+let s:gdb_buf_memory = "/tmp/gdb/memory.txt"
+let s:gdb_buf_stack = "/tmp/gdb/stack.txt"
+let s:gdb_buf_breakpoints = "/tmp/gdb/breakpoints.txt"
+let s:gdb_buf_thread = "/tmp/gdb/threads.txt"
+let s:gdb_buf_expressions = "/tmp/gdb/expressions.txt"
+let s:gdb_buf_history = "/tmp/gdb/history.txt"
+let s:gdb_buf_output = "/tmp/gdb/out.txt"
 
 let s:cur_line_id = 9999
 let s:prv_line_id = 9998
@@ -56,8 +60,13 @@ function! s:Gdb_buf_split(buf_name, size, pos)
     exe 'silent! '.a:pos.' '.a:size. ' split ' . wcmd
 endfunction
 
+function! s:Gdb_attach(tmux_gdb)
+	let g:tmux_gdb = a:tmux_gdb
+	echom "GdbAttach ".g:tmux_gdb.", reset ':GdbAttach 1.4' which tmux <window-index>.<pane-index>"
+endfunction
+
 " Get ready for communication
-function! s:Gdb_interf_init()
+function! s:Gdb_interf_init(tmux_gdb, vim_servername, out_dir)
 
 	call s:Gdb_shortcuts()
 
@@ -83,6 +92,16 @@ function! s:Gdb_interf_init()
     "inoremap <buffer> <silent> <CR> <ESC>o<ESC>:call <SID>Gdb_command(getline(line(".")-1))<CR>
 	"inoremap <buffer> <silent> <TAB> <C-P>
 	"nnoremap <buffer> <silent> : <C-W>p:
+
+	if exists("v:servername") && v:servername != a:vim_servername
+		echoerr "Vim Gdb init fail: servername should be " . a.vim_servername
+		return
+	endif
+
+	call s:Gdb_attach(a:tmux_gdb)
+
+	let g:tmux_gdb_dir = a:out_dir
+	echom "Gdb's output dir: ".g:tmux_gdb_dir
 
 	start
 	let s:vimgdb_running = 1
@@ -316,20 +335,33 @@ function s:Gdb_refresh_files(name, line)
 		endif
 	endfor
 	silent exec currentWinNr . 'wincmd w'
+	if filereadable(s:gdb_buf_stack)
+		exec "cgetfile " . s:gdb_buf_stack
+	endif
 endfun
+
+function s:GdbMode_complete(A, L, P)
+	return "1.4 GDB.SOURCE /tmp/gdb/"
+endfunction
 
 function s:Gdb_shortcuts()
 	nmap <silent> <F12>	 :call <SID>Gdb_togglebreak(bufname("%"), line("."))<CR>
 
 	nmap <silent> <F4>	 :call <SID>Gdb_command("print <C-R><C-W>")<CR>
 	vmap <silent> <F4>	 "vy:call <SID>Gdb_command("print <C-R>v")<CR>
+
+	nmap <silent> <F2>	 :call <SID>Gdb_command("up")<CR>
+	nmap <silent> <F3>	 :call <SID>Gdb_command("down")<CR>
+
 	nmap <silent> <F5>	 :call <SID>Gdb_command("next")<CR>
 	nmap <silent> <F6>	 :call <SID>Gdb_command("step")<CR>
 	nmap <silent> <F7>	 :call <SID>Gdb_command("finish")<CR>
 	nmap <silent> <F8>	 :call <SID>Gdb_command("continue")<CR>
+
 	nmap <silent> <F9>	 :call <SID>Gdb_command("run")<CR>
 endfunction
 
-command! GdbMode call <SID>Gdb_interf_init()
-command -nargs=* GdbRefresh call <SID>Gdb_refresh_files(<f-args>)
+command! -nargs=* -complete=custom,<SID>GdbMode_complete GdbMode call <SID>Gdb_interf_init(<f-args>)
+command! -nargs=* GdbAttach call <SID>Gdb_attach(<f-args>)
+command! -nargs=* GdbRefresh call <SID>Gdb_refresh_files(<f-args>)
 "nmap <silent> <F2> 	 :GdbMode<CR>
