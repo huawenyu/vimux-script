@@ -226,7 +226,7 @@ function s:Gdb_command(cmd)
 
 	let cmd_str = a:cmd
 	if cmd_str == "until"
-		let cmd_str += " ".line('.')
+		let cmd_str = cmd_str." ".line('.')
 	endif
 
 	if exists("g:tmux_gdb")
