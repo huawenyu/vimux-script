@@ -325,10 +325,10 @@ function s:Gdb_togglebreak(name, line)
 	endwhile
 
 	if found == 1
-		exec "HightlightOff"
+		exec "silent! HightlightOff"
 		call s:Gdb_command("clear ".a:name.":".a:line)
 	else
-		exec "HightlightOn"
+		exec "silent! HightlightOn"
 		call s:Gdb_command("break ".a:name.":".a:line)
 	endif
 endfun
