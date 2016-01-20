@@ -28,6 +28,7 @@ let s:gdb_buf_registers = "/tmp/gdb/registers.txt"
 let s:gdb_buf_assembly = "/tmp/gdb/assembly.txt"
 let s:gdb_buf_memory = "/tmp/gdb/memory.txt"
 let s:gdb_buf_stack = "/tmp/gdb/stack.txt"
+let s:gdb_buf_backtrace = "/tmp/gdb/backtrace.txt"
 let s:gdb_buf_breakpoints = "/tmp/gdb/breakpoints.txt"
 let s:gdb_buf_thread = "/tmp/gdb/threads.txt"
 let s:gdb_buf_expressions = "/tmp/gdb/expressions.txt"
@@ -340,9 +341,14 @@ function s:Gdb_refresh_files(name, line)
 		endif
 	endfor
 	silent exec currentWinNr . 'wincmd w'
-	if filereadable(s:gdb_buf_stack)
-		exec "cgetfile " . s:gdb_buf_stack
+
+	if filereadable(s:gdb_buf_backtrace)
+		exec "cgetfile " . s:gdb_buf_backtrace
 	endif
+
+	"if filereadable(s:gdb_buf_breakpoints)
+	"	exec "lgetfile " . s:gdb_buf_breakpoints
+	"endif
 endfun
 
 function s:GdbMode_complete(A, L, P)
