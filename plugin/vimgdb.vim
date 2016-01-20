@@ -88,7 +88,7 @@ function! s:Gdb_interf_init(tmux_gdb, vim_servername, out_dir)
 		autocmd WinLeave <buffer> stopi
     augroup end
 
-	hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
+	"hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
 
     "inoremap <buffer> <silent> <CR> <ESC>o<ESC>:call <SID>Gdb_command(getline(line(".")-1))<CR>
 	"inoremap <buffer> <silent> <TAB> <C-P>
