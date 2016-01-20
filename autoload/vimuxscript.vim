@@ -195,7 +195,7 @@ function! vimuxscript#ExecuteGroup()
     endif
 endfunction
 
-function! vimuxscript#_Capture(hist_pos)
+function! vimuxscript#_Capture(hist_pos, ...)
     let tmux_str = ""
     let curr_pos = vimuxscript#_TmuxInfoRefresh()
     if !empty(a:hist_pos) && !empty(curr_pos)
@@ -212,10 +212,15 @@ function! vimuxscript#_Capture(hist_pos)
     if !empty(tmux_str)
         let g:output = vimux#_VimuxTmux("capture-pane -p" . tmux_str)
 
-        if g:VimuxDebug
+        if g:VimuxDebug || a:0
             " So we can check the output by: tmux show-buff <or> check the file
             call vimux#_VimuxTmux("capture-pane " . tmux_str)
-            call vimux#_VimuxTmux("save-buffer /tmp/vim.vimux")
+
+            let fname = '/tmp/vim.vimux'
+            if a:0
+                let fname = a:1
+            endif
+            call vimux#_VimuxTmux("save-buffer ".fname)
             "call vimux#_VimuxTmux("delete-buffer")
         endif
 

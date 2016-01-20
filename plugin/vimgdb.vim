@@ -24,16 +24,16 @@ let s:gdb_win_hight = 2
 let s:gdb_output_width = 10
 
 let s:gdb_buf_name = "__GDB_WINDOW__"
-let s:gdb_buf_registers = "/tmp/gdb/registers.txt"
-let s:gdb_buf_assembly = "/tmp/gdb/assembly.txt"
-let s:gdb_buf_memory = "/tmp/gdb/memory.txt"
-let s:gdb_buf_stack = "/tmp/gdb/stack.txt"
-let s:gdb_buf_backtrace = "/tmp/gdb/backtrace.txt"
-let s:gdb_buf_breakpoints = "/tmp/gdb/breakpoints.txt"
-let s:gdb_buf_thread = "/tmp/gdb/threads.txt"
-let s:gdb_buf_expressions = "/tmp/gdb/expressions.txt"
-let s:gdb_buf_history = "/tmp/gdb/history.txt"
-let s:gdb_buf_output = "/tmp/gdb/out.txt"
+let s:gdb_buf_registers = "/tmp/gdb/registers"
+let s:gdb_buf_assembly = "/tmp/gdb/assembly"
+let s:gdb_buf_memory = "/tmp/gdb/memory"
+let s:gdb_buf_stack = "/tmp/gdb/stack"
+let s:gdb_buf_breakpoints = "/tmp/gdb/breakpoints"
+let s:gdb_buf_thread = "/tmp/gdb/threads"
+let s:gdb_buf_expressions = "/tmp/gdb/expressions"
+let s:gdb_buf_history = "/tmp/gdb/history"
+let s:gdb_buf_output = "/tmp/gdb/out"
+let s:gdb_capture = "/tmp/gdb/capture"
 
 let s:cur_line_id = 9999
 let s:prv_line_id = 9998
@@ -231,10 +231,21 @@ function s:Gdb_command(cmd)
 	endif
 
 	if exists("g:tmux_gdb")
-		"let hist_pos = vimuxscript#_TmuxInfoRefresh()
 		call vimux#TmuxAttach2(g:tmux_gdb)
+		let hist_pos = vimuxscript#_TmuxInfoRefresh()
 		call vimux#Run(cmd_str)
-		"let lines = vimuxscript#_Capture(hist_pos)
+		let lines = vimuxscript#_Capture(hist_pos, s:gdb_capture)
+		call s:Gdb_refresh_window(s:gdb_capture)
+
+		let fname = matchstr(lines, '\v at \zs(.*):\d+\ze\n')
+		"echo fname
+		if !empty(fname)
+			let finfo = split(join(split(fname, '\n'), ''), ':')
+			"echo finfo
+			if len(finfo) >= 2
+				call s:Gdb_refresh_source(finfo[0], finfo[1])
+			endif
+		endif
 	endif
 	return
 
@@ -321,8 +332,40 @@ function s:Gdb_togglebreak(name, line)
 	endif
 endfun
 
+function s:Gdb_refresh_window(name)
+	let src = 0
+	let currentWinNr = winnr()
+	for nr in range(1, winnr('$'))
+		silent exec nr . "wincmd w"
+
+		let fname = bufname(winbufnr(0))
+		if match(fname, a:name) > -1
+			silent e!
+		endif
+	endfor
+	silent exec currentWinNr . 'wincmd w'
+endfun
+
+function s:Gdb_refresh_source(name, line)
+	let src = 0
+	let currentWinNr = winnr()
+	let gdb_dir = exists("g:tmux_gdb_dir")
+	for nr in range(1, winnr('$'))
+		silent exec nr . "wincmd w"
+
+		let fname = bufname(winbufnr(0))
+		if gdb_dir && match(fname, g:tmux_gdb_dir) > -1
+		elseif src == 0
+			let src = nr
+			silent exec "e! +".a:line." ".a:name
+			set cursorline
+		endif
+	endfor
+	silent exec currentWinNr . 'wincmd w'
+endfun
+
 " Refresh files
-function s:Gdb_refresh_files(name, line)
+function s:Gdb_refresh_all(name, line)
 	let src = 0
 	let currentWinNr = winnr()
 	let gdb_dir = exists("g:tmux_gdb_dir")
@@ -342,8 +385,8 @@ function s:Gdb_refresh_files(name, line)
 	endfor
 	silent exec currentWinNr . 'wincmd w'
 
-	if filereadable(s:gdb_buf_backtrace)
-		exec "cgetfile " . s:gdb_buf_backtrace
+	if filereadable(s:gdb_buf_stack)
+		exec "cgetfile " . s:gdb_buf_stack
 	endif
 
 	"execute "norm mP"
@@ -388,5 +431,5 @@ endfunction
 
 command! -nargs=* -complete=custom,<SID>GdbMode_complete GdbMode call <SID>Gdb_interf_init(<f-args>)
 command! -nargs=* GdbAttach call <SID>Gdb_attach(<f-args>)
-command! -nargs=* GdbRefresh call <SID>Gdb_refresh_files(<f-args>)
+command! -nargs=* GdbRefresh call <SID>Gdb_refresh_all(<f-args>)
 "nmap <silent> <F2> 	 :GdbMode<CR>
