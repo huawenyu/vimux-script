@@ -346,6 +346,19 @@ function s:Gdb_refresh_files(name, line)
 		exec "cgetfile " . s:gdb_buf_backtrace
 	endif
 
+	"execute "norm mP"
+	"let new_list = getqflist()
+	"for i in range(len(new_list))
+	"	if has_key(new_list[i], 'bufnr')
+	"		let new_list[i].filename = fnamemodify(bufname(new_list[i].bufnr), ':p:.')
+	"	else
+	"		let new_list[i].filename = fnamemodify(new_list[i].filename, ':p:.')
+	"	endif
+	"	silent! cnext
+	"endfor
+	"call setqflist(new_list, 'r')
+	"execute "norm `P"
+
 	"if filereadable(s:gdb_buf_breakpoints)
 	"	exec "lgetfile " . s:gdb_buf_breakpoints
 	"endif
