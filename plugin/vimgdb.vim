@@ -71,24 +71,24 @@ function! s:Gdb_interf_init(tmux_gdb, vim_servername, out_dir)
 
 	call s:Gdb_shortcuts()
 
-	"command -nargs=+ Gdb	:call Gdb_command(<q-args>, v:count)
-	"call s:Gdb_buf_split(s:gdb_buf_name, s:gdb_win_hight, "botright")
-	"call s:Gdb_buf_split(s:gdb_buf_output, s:gdb_output_width, "topright")
+	""hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
 
-    " Mark the buffer as a scratch buffer
-    setlocal buftype=nofile
-    setlocal bufhidden=delete
-    setlocal noswapfile
-    setlocal wrap
-    setlocal nobuflisted
-    setlocal nonumber
+	""command -nargs=+ Gdb	:call Gdb_command(<q-args>, v:count)
+	""call s:Gdb_buf_split(s:gdb_buf_name, s:gdb_win_hight, "botright")
+	""call s:Gdb_buf_split(s:gdb_buf_output, s:gdb_output_width, "topright")
 
-    augroup VimGdbAutoCommand
-		autocmd WinEnter <buffer> call s:EnterGdbBuf()
-		autocmd WinLeave <buffer> stopi
-    augroup end
+    "" Mark the buffer as a scratch buffer
+    "setlocal buftype=nofile
+    "setlocal bufhidden=delete
+    "setlocal noswapfile
+    "setlocal wrap
+    "setlocal nobuflisted
+    "setlocal nonumber
 
-	"hi CursorLine cterm=NONE ctermbg=darkred ctermfg=white
+    "augroup VimGdbAutoCommand
+	"	autocmd WinEnter <buffer> call s:EnterGdbBuf()
+	"	autocmd WinLeave <buffer> stopi
+    "augroup end
 
     "inoremap <buffer> <silent> <CR> <ESC>o<ESC>:call <SID>Gdb_command(getline(line(".")-1))<CR>
 	"inoremap <buffer> <silent> <TAB> <C-P>
@@ -104,7 +104,7 @@ function! s:Gdb_interf_init(tmux_gdb, vim_servername, out_dir)
 	let g:tmux_gdb_dir = a:out_dir
 	echom "Gdb's output dir: ".g:tmux_gdb_dir
 
-	start
+	"startinsert
 	let s:vimgdb_running = 1
 
 	"wincmd p
@@ -234,7 +234,7 @@ function s:Gdb_command(cmd)
 		call vimux#TmuxAttach2(g:tmux_gdb)
 		let hist_pos = vimuxscript#_TmuxInfoRefresh()
 		call vimux#Run(cmd_str)
-		"echom "wilson try to call catpure to file " . s:gdb_capture
+		call Decho("wilson try to call catpure to file ", s:gdb_capture)
 		let lines = vimuxscript#_Capture(hist_pos, s:gdb_capture)
 		call s:Gdb_refresh_window(s:gdb_capture)
 

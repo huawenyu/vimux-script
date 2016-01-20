@@ -204,16 +204,17 @@ function! vimuxscript#_Capture(hist_pos, ...)
 
         let tmux_str = " -S " . (curr_pos[2] - delta + 1)
                     \ . " -t " . g:VimuxRunnerIndex
+        call Decho("delta=", delta, "hist=", a:hist_pos, " curr=", curr_pos)
     elseif !empty(curr_pos)
         let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
                     \ . " -t " . g:VimuxRunnerIndex
     endif
 
-    "echom "wilson save-buff cmd-str " . tmux_str
+    Decho "wilson save-buff cmd-str " . tmux_str
     if !empty(tmux_str)
         let g:output = vimux#_VimuxTmux("capture-pane -p" . tmux_str)
 
-        "echom "wilson save-buff args " . a:0
+        Decho "wilson save-buff args " . a:0
         if g:VimuxDebug || a:0
             " So we can check the output by: tmux show-buff <or> check the file
             call vimux#_VimuxTmux("capture-pane " . tmux_str)
@@ -222,11 +223,12 @@ function! vimuxscript#_Capture(hist_pos, ...)
             if a:0
                 let fname = a:1
             endif
-            "echom "wilson save-buff to " . fname
+            Decho "wilson save-buff to " . fname
             call vimux#_VimuxTmux("save-buffer ".fname)
             "call vimux#_VimuxTmux("delete-buffer")
         endif
 
+        Decho g:output
         return g:output
     endif
 
@@ -245,7 +247,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
         return -1
     elseif match(a:cmdline, "^<let>") > -1
         execute "let " . params
-        "echom "wilson let " . params
+        Decho "wilson let " . params
         return 0
     elseif match(a:cmdline, "^<info>") > -1
         echom "Info:\n"
@@ -362,7 +364,7 @@ function! vimuxscript#_ParseVars(cmdline_)
     let cmdline = a:cmdline_
 
     " solve variable
-    "echom 'wilson executecmd: ' . cmdline
+    Decho 'wilson executecmd: ' . cmdline
     while match(cmdline, "$<.*>") > -1
         let varstr_ = matchstr(cmdline, "$<.*>")
         let varstr = varstr_[2:-2]
@@ -373,9 +375,9 @@ function! vimuxscript#_ParseVars(cmdline_)
             redir END
 
             let eval_out = strtrans(eval_out_)
-            "echom "wilson: ".eval_out. " ". varstr_
+            Decho "wilson: ".eval_out. " ". varstr_
             let cmdline = substitute(cmdline, "$<.*>", eval_out[2:], "")
-            "echom "wilson: ".cmdline
+            Decho "wilson: ".cmdline
         endif
     endwhile
 
