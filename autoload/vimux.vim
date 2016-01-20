@@ -17,7 +17,7 @@ function! vimux#Prepare()
     call vimux#VimuxOpenRunner()
   endif
 
-  if g:VimuxRunnerIndex < -1
+  if !exists("g:VimuxRunnerIndex") || empty(g:VimuxRunnerIndex)
     unlet! g:VimuxRunnerIndex
     echom "No VimxOpenRunner."
     return 0
@@ -115,7 +115,7 @@ endfunction
 function! vimux#VimuxOpenRunner()
   let nearestIndex = vimux#_VimuxNearestIndex()
 
-  if vimux#_VimuxOption("g:VimuxUseNearest", 1) == 1 && nearestIndex != -1
+  if vimux#_VimuxOption("g:VimuxUseNearest", 1) == 1 && !empty(nearestIndex)
     let g:VimuxRunnerIndex = nearestIndex
   else
     if vimux#_VimuxRunnerType() == "pane"
@@ -228,35 +228,38 @@ endfunction
 
 function! vimux#_VimuxNearestIndex()
   if !exists("g:VimuxVimIndex")
-    return -1
+    return ""
   endif
 
-  let runner = -1
-  if g:VimuxVimIndex % 2 == 0
-    let runner = g:VimuxVimIndex - 1
+  if vimux#_VimuxRunnerType() == "pane"
+    let vim_index = 1 + split(g:VimuxVimIndex, '\V.')[1]
+    let runner_id = split(g:VimuxVimIndex, '\V.')[0] .".".vim_index
   else
-    let runner = g:VimuxVimIndex + 1
-  endif
+    let vim_index = 1 + split(g:VimuxVimIndex, '\V.')[0]
+    let runner_id = "".vim_index
+  end
 
   let find = 0
-  let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()."s"), "\n")
-  for view in views
-    if runner == 0 + split(view, ":")[0]
-      let find = 1
-      let g:VimuxRunnerIndex = runner
+  if vimux#_VimuxHasRunner(runner_id) > -1
+	let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()."s"), "\n")
+	for view in views
+	  if vim_index == 0 + split(view, ":")[0]
+		let find = 1
+		let g:VimuxRunnerIndex = runner_id
 
-      let m_str = matchstr(view, "x\\d\\+]")
-      let g:VimuxRunnerHeight = 0 + m_str[1:-2]
-    endif
-  endfor
+		let m_str = matchstr(view, "x\\d\\+]")
+		let g:VimuxRunnerHeight = 0 + m_str[1:-2]
+	  endif
+	endfor
+  endif
 
   if !find
     unlet! g:VimuxRunnerIndex
     unlet! g:VimuxRunnerHeight
-    return -1
+    return ""
   endif
 
-  return runner
+  return runner_id
 endfunction
 
 function! vimux#_VimuxRunnerType()
@@ -290,7 +293,7 @@ endfunction
 
 " Init {{{1
 if !exists("g:VimuxVimIndex")
-  let g:VimuxVimIndex = vimux#_VimuxTmuxProperty("#P")
+  let g:VimuxVimIndex = vimux#_VimuxTmuxIndex()
 endif
 
 if !exists("g:VimuxRunnerIndex")

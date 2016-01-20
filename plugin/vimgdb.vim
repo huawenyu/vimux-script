@@ -234,6 +234,7 @@ function s:Gdb_command(cmd)
 		call vimux#TmuxAttach2(g:tmux_gdb)
 		let hist_pos = vimuxscript#_TmuxInfoRefresh()
 		call vimux#Run(cmd_str)
+		"echom "wilson try to call catpure to file " . s:gdb_capture
 		let lines = vimuxscript#_Capture(hist_pos, s:gdb_capture)
 		call s:Gdb_refresh_window(s:gdb_capture)
 

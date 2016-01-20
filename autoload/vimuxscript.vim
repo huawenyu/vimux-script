@@ -6,7 +6,7 @@ function! vimuxscript#_TmuxInfoRefresh()
     endif
 
     let views = split(vimux#_VimuxTmux("list-".vimux#_VimuxRunnerType()
-                \."s -F '#{window_index}.#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
+                \."s -sF '#{window_index}.#{pane_index} #{history_size} #{pane_height} #{cursor_y}'"), "\n")
 
     for view in views
         let sizes = split(view, ' ')
@@ -209,9 +209,11 @@ function! vimuxscript#_Capture(hist_pos, ...)
                     \ . " -t " . g:VimuxRunnerIndex
     endif
 
+    "echom "wilson save-buff cmd-str " . tmux_str
     if !empty(tmux_str)
         let g:output = vimux#_VimuxTmux("capture-pane -p" . tmux_str)
 
+        "echom "wilson save-buff args " . a:0
         if g:VimuxDebug || a:0
             " So we can check the output by: tmux show-buff <or> check the file
             call vimux#_VimuxTmux("capture-pane " . tmux_str)
@@ -220,6 +222,7 @@ function! vimuxscript#_Capture(hist_pos, ...)
             if a:0
                 let fname = a:1
             endif
+            "echom "wilson save-buff to " . fname
             call vimux#_VimuxTmux("save-buffer ".fname)
             "call vimux#_VimuxTmux("delete-buffer")
         endif
@@ -255,7 +258,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
         return 0
     elseif match(a:cmdline, "^<attach> ") > -1
         let pane_num = vimuxscript#_ParseVars(params)
-        call vimux#TmuxAttach(0 + pane_num)
+        call vimux#TmuxAttach(pane_num)
         return 0
     elseif match(a:cmdline, "^<call> ") > -1
         call vimuxscript#ExecuteGroupByname(params)
