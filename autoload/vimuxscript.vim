@@ -241,33 +241,33 @@ endfunction
 " <match> <case>
 " <eval>
 function! vimuxscript#_ExecuteInnnerAction(cmdline)
-    let params = vimuxscript#_GetParams(a:cmdline)
+    let cmdline = vimuxscript#_ParseVars(a:cmdline)
+    let params = vimuxscript#_GetParams(cmdline)
 
-    if match(a:cmdline, "^<return>") > -1
+    if match(cmdline, "^<return>") > -1
         return -1
-    elseif match(a:cmdline, "^<let>") > -1
+    elseif match(cmdline, "^<let>") > -1
         execute "let " . params
         Decho "wilson let " . params
         return 0
-    elseif match(a:cmdline, "^<info>") > -1
+    elseif match(cmdline, "^<info>") > -1
         echom "Info:\n"
                     \."  cmdstr[".g:last_cmdstr."]\n"
                     \."  outstr[".g:outstr."]\n"
                     \."  output[".g:output[-20:]."]\n\n"
         return 0
-    elseif match(a:cmdline, "^<capture> ") > -1
+    elseif match(cmdline, "^<capture> ") > -1
         let g:VimuxGroupCaptureLine = 0 + params
         return 0
-    elseif match(a:cmdline, "^<attach> ") > -1
-        let pane_num = vimuxscript#_ParseVars(params)
-        call vimux#TmuxAttach(pane_num)
+    elseif match(cmdline, "^<attach> ") > -1
+        call vimux#TmuxAttach(params)
         return 0
-    elseif match(a:cmdline, "^<call> ") > -1
+    elseif match(cmdline, "^<call> ") > -1
         call vimuxscript#ExecuteGroupByname(params)
         return 0
-    elseif match(a:cmdline, "^<label> ") > -1
+    elseif match(cmdline, "^<label> ") > -1
         return 0
-    elseif match(a:cmdline, "^<goto> ") > -1
+    elseif match(cmdline, "^<goto> ") > -1
         let l_label = search('<label>.\{-}' . params, 'nw')
         if l_label > 0
             let g:sp_vimux = l_label + 1
@@ -275,18 +275,18 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
             return 0
         endif
 
-        echoerr "fail: " . a:cmdline
-    elseif match(a:cmdline, "^<match> ") > -1
+        echoerr "fail: " . cmdline
+    elseif match(cmdline, "^<match> ") > -1
         let g:outstr = ""
         let g:output = ""
 
         if !exists("g:hist_pos")
-            echoerr "no g:hist_pos fail: " . a:cmdline
+            echoerr "no g:hist_pos fail: " . cmdline
             return -1
         endif
 
         if empty(params)
-            echoerr "no params fail: " . a:cmdline
+            echoerr "no params fail: " . cmdline
             return -1
         endif
 
@@ -303,13 +303,14 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
                 let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
             endwhile
             if l_count == 100 || empty(g:output)
-                echoerr "capture no output after 10s: " . a:cmdline
+                echoerr "capture no output after 10s: " . cmdline
                 return -1
             endif
 
             let out_lines = split(g:output, "\n")
             for out_line in out_lines
                 let g:outstr = matchstr(out_line, params)
+                Decho "out_line=" . out_line . " params=" . params. " result[g:outstr]=" . g:outstr
                 if !empty(g:outstr)
                     break
                 endif
@@ -317,6 +318,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
 
             if empty(g:outstr)
                 let g:outstr = matchstr(g:output, params)
+                Decho "g:output=" . g:output . " params=" . params. " result[g:outstr]=" . g:outstr
             endif
 
             if empty(g:outstr)
@@ -326,33 +328,33 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
         endwhile
 
         if empty(g:outstr)
-            echoerr "match fail after 10s: " . a:cmdline
+            echoerr "match fail after 10s: " . cmdline
             return -1
         else
             return 0
         endif
-    elseif match(a:cmdline, "^<case> ") > -1
-        let m_str = matchstr(a:cmdline, "|.*| ")
+    elseif match(cmdline, "^<case> ") > -1
+        let m_str = matchstr(cmdline, "|.*| ")
         if empty(m_str)
-            echoerr "{<case> |case-str| command} format error: " . a:cmdline
+            echoerr "{<case> |case-str| command} format error: " . cmdline
             return -1
         endif
 
         let g:outstr2 = matchstr(g:outstr, m_str[1:-3])
         if !empty(g:outstr2)
-            let g:cmdstr = a:cmdline[(7 + len(m_str)) : ]
+            let g:cmdstr = cmdline[(7 + len(m_str)) : ]
             call vimuxscript#_ExecuteCmd(g:cmdstr)
             return 0
         endif
-    elseif match(a:cmdline, "^<eval> ") > -1
+    elseif match(cmdline, "^<eval> ") > -1
         execute params
         return 0
-    elseif match(a:cmdline, "^<sleep> ") > -1
+    elseif match(cmdline, "^<sleep> ") > -1
         exec "sleep " . params
         return 0
     else
-        let g:cmdstr = a:cmdline
-        "echom 'Vimux exec group fail: invalid vimux command[' . a:cmdline . ']'
+        let g:cmdstr = cmdline
+        "echom 'Vimux exec group fail: invalid vimux command[' . cmdline . ']'
         return 1
     endif
 endfunction
