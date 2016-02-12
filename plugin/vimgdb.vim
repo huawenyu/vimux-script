@@ -209,7 +209,7 @@ function s:Gdb_CurrFileLine(file, line)
 	execute "sign unplace ". s:prv_line_id
 endf
 
-function s:Gdb_command(cmd)
+function s:Gdb_command(cmd, ...)
 	if s:vimgdb_running == 0
 		echo "VIMGDB is not running"
 		return
@@ -233,8 +233,21 @@ function s:Gdb_command(cmd)
 	if exists("g:tmux_gdb")
 		call vimux#TmuxAttach2(g:tmux_gdb)
 		let hist_pos = vimuxscript#_TmuxInfoRefresh()
+
 		call vimux#Run(cmd_str)
 		call Decho("wilson try to call catpure to file ", s:gdb_capture)
+
+		if exists("a:0") && a:0 > 0
+			for arg in a:000
+				sleep 100m
+				call vimux#Run(arg)
+			endfor
+		endif
+
+		sleep 100m
+		call vimux#Run("info local")
+
+		sleep 200m
 		let lines = vimuxscript#_Capture(hist_pos, s:gdb_capture)
 		call s:Gdb_refresh_window(s:gdb_capture)
 
@@ -246,6 +259,8 @@ function s:Gdb_command(cmd)
 			if len(finfo) >= 2
 				call s:Gdb_refresh_source(finfo[0], finfo[1])
 			endif
+		else
+			silent exec g:curr_src
 		endif
 	endif
 	return
@@ -358,7 +373,8 @@ function s:Gdb_refresh_source(name, line)
 		if gdb_dir && match(fname, g:tmux_gdb_dir) > -1
 		elseif src == 0
 			let src = nr
-			silent exec "e! +".a:line." ".a:name
+			let g:curr_src = "e! +".a:line." ".a:name
+			silent exec g:curr_src
 			set cursorline
 		endif
 	endfor
@@ -380,7 +396,8 @@ function s:Gdb_refresh_all(name, line)
 			set nocursorline
 		elseif src == 0
 			let src = nr
-			silent exec "e! +".a:line." ".a:name
+			let g:curr_src = "e! +".a:line." ".a:name
+			silent exec g:curr_src
 			set cursorline
 		endif
 	endfor
@@ -415,8 +432,8 @@ endfunction
 function s:Gdb_shortcuts()
 	nmap <silent> <F12>	 :call <SID>Gdb_togglebreak(bufname("%"), line("."))<CR>
 
-	nmap <silent> <F4>	 :call <SID>Gdb_command("print <C-R><C-W>")<CR>
-	vmap <silent> <F4>	 "vy:call <SID>Gdb_command("print <C-R>v")<CR>
+	nmap <silent> <F4>	 :call <SID>Gdb_command("print <C-R><C-W>", "print *<C-R><C-W>")<CR>
+	vmap <silent> <F4>	 "vy:call <SID>Gdb_command("print <C-R>v", "print *<C-R>v")<CR>
 
 	nmap <silent> <F2>	 :call <SID>Gdb_command("up")<CR>
 	nmap <silent> <F3>	 :call <SID>Gdb_command("down")<CR>
@@ -433,4 +450,5 @@ endfunction
 command! -nargs=* -complete=custom,<SID>GdbMode_complete GdbMode call <SID>Gdb_interf_init(<f-args>)
 command! -nargs=* GdbAttach call <SID>Gdb_attach(<f-args>)
 command! -nargs=* GdbRefresh call <SID>Gdb_refresh_all(<f-args>)
+command! -nargs=* GdbCmd call <SID>Gdb_command(<f-args>)
 "nmap <silent> <F2> 	 :GdbMode<CR>
