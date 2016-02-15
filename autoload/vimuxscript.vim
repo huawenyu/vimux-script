@@ -235,6 +235,11 @@ function! vimuxscript#_Capture(hist_pos, ...)
     return ""
 endfunction
 
+function! vimuxscript#_NoWait()
+    let g:VimuxGroupCaptureWait = 0
+    let g:VimuxGroupCommandPause = 0
+endfunction
+
 " Inner script command:
 " <return> <info> <capture> <attach>
 " <call> <label> <goto>
@@ -298,7 +303,9 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
             while empty(g:output) && l_count < 100
                 let l_count += 1
 
-                exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                if g:VimuxGroupCaptureWait > 0
+                    exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                endif
                 call vimuxscript#_Capture(g:hist_pos)
                 let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
             endwhile
@@ -322,7 +329,9 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
             endif
 
             if empty(g:outstr)
-                exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                if g:VimuxGroupCaptureWait > 0
+                    exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                endif
                 let g:output = ""
             endif
         endwhile
@@ -405,12 +414,16 @@ function! vimuxscript#_ExecuteCmd(cmdline_)
         call vimux#VimuxSendText(data)
         call vimux#VimuxSendKeys("Enter")
 
-        exec "sleep " . g:VimuxGroupCommandPause . "m"
+        if g:VimuxGroupCommandPause > 0
+            exec "sleep " . g:VimuxGroupCommandPause . "m"
+        endif
         return 1
     else
         if vimux#Run(cmdline)
             let capture = 1
-            exec "sleep " . g:VimuxGroupCommandPause . "m"
+            if g:VimuxGroupCommandPause > 0
+                exec "sleep " . g:VimuxGroupCommandPause . "m"
+            endif
             return 1
         endif
     endif
