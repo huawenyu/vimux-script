@@ -1,0 +1,222 @@
+init {{{1
+	<let> w:addr_box = '172.16.80.127'
+	<let> w:addr_tftp = '10.1.2.1'
+
+	<let> w:pane_log = '1.4'
+	<let> w:pane_box = '1.3'
+	<let> w:pane_gdb = '1.4'
+
+	<let> w:gdb_prompt = '>>> '
+	<let> w:box_prompt = 'VM64 #'
+}}}
+
+test_match {{{1
+	<attach> $<w:pane_box>
+	ls -l
+	<match> \(doc$\|plugin$\)
+	<case> |doc| ls -l $<g:outstr>
+}}}
+
+decode_debug_acsm_crash {{{1
+	<label> check_crash_again
+
+	<attach> $<w:pane_box>
+	diag test app wad 3130
+	diag test app wad 3131
+
+	<attach> $<w:pane_gdb>
+	curl -4 -x 10.1.100.150:8080 www.tired.com
+
+	<attach> $<w:pane_log>
+	diag debug crash read
+
+	<goto> check_crash_again
+}}}
+
+
+routine {{{1
+	all {{{2
+		<call> box_telnet
+		<call> vmware_image_unzip
+		<call> box_config_backup
+		<call> box_config_restore
+		<call> box_image
+		<call> box_log
+		<call> log_and_capture
+		<call> box_crash
+	}}}
+
+	log_and_capture {{{2
+		<call> box_log
+
+		# Capture net
+		<attach> $<w:pane_gdb>
+		tshark -i eth0 -i vmnet1 -w /tmp/pcap.1
+
+		## Check crash
+		#<call> box_crash
+		#<label> check_again
+		#diag debug crash read | grep wad
+		#<match> \(firmware\|VM64 #\)
+		#<case> |firmware| <goto> label_end
+		#<goto> check_again
+
+		#<label> label_end
+		#<call> decode_crash
+	}}}
+
+	log_capturebox {{{2
+		<call> box_log
+
+		# Capture net
+		<attach> $<w:pane_gdb>
+
+		## Check crash
+		#<call> box_crash
+		#<label> check_again
+		#diag debug crash read | grep wad
+		#<match> \(firmware\|VM64 #\)
+		#<case> |firmware| <goto> label_end
+		#<goto> check_again
+
+		#<label> label_end
+		#<call> decode_crash
+	}}}
+
+	close {{{2
+		<attach> $<w:pane_log>
+		exit
+
+		<attach> $<w:pane_box>
+		exit
+
+		<attach> $<w:pane_gdb>
+		<C-c>
+	}}}
+
+	decode_crash {{{2
+		<call> close
+
+	}}}
+
+	box_log {{{2
+		<attach> $<w:pane_log>
+		rm -f /home/wilson/tmp/log.tel
+		plink -telnet $<w:addr_box> | tee -a /home/wilson/tmp/log.tel
+		admin
+		<Enter>
+
+		diag debug console no-user-log-msg enable
+		diag debug console timestamp enable
+		#diag test app wad 2000
+		#diag test app wad 901
+		#<sleep> 2
+		diag debug app wad -1
+		diag debug enable
+	}}}
+
+	vmware_image_unzip {{{2
+		<attach> $<w:pane_gdb>
+		unzip -qod vmware image.out.vmware.zip; cp vmware/fortios.vmdk ~/vmware/rtmp-5.2/.
+	}}}
+
+	box_image {{{2
+		<call> box_telnet
+		exec restore image tftp image-10vd.out $<w:addr_tftp>
+		<match> Do you want to continue?
+		y
+	}}}
+
+	box_config_backup {{{2
+		<call> box_telnet
+		exec restore image tftp image-10vd.out $<w:addr_tftp>
+		exec backup config tftp rtmp.config $<w:addr_tftp>
+		<match> Do you want to continue?
+		y
+	}}}
+
+	box_config_restore {{{2
+		<call> box_telnet
+		exec restore config tftp rtmp.config $<w:addr_tftp>
+		<match> Do you want to continue?
+		y
+	}}}
+
+	box_crash {{{2
+		<call> box_telnet
+		diag debug crash read
+	}}}
+
+	box_telnet {{{2
+		<attach> $<w:pane_box>
+
+		telnet $<w:addr_box>
+		admin
+		<Enter>
+	}}}
+}}}
+
+gdb_debug {{{1
+	all {{{2
+		<call> box_gdbserver_init
+		<call> box_gdbserver_attach
+		<call> box_log
+		<call> linux_gdb
+	}}}
+
+	box_gdbserver {{{2
+		box_gdbserver_init {{{3
+			<call> box_telnet
+			diag debug console no-user-log-msg enable
+
+			# watchdog reponse
+			# swith to manage
+			# only start one worker
+			# switch to worker
+			# Disable watchdog
+
+			<attach> $<w:pane_box>
+
+			diag test app wad 2000
+			diag test app wad 901
+			<sleep> 2
+			diag test app wad 2200
+			diag debug enable
+			<sleep> 1
+			diag test app wad 7
+			<match> Set watchdog .*\.
+			<case> |enable.| diag test app wad 7
+			diag debug disable
+			sys sh
+		}}}
+
+		box_gdbserver_attach {{{3
+			<attach> $<w:pane_box>
+
+			ps | grep wad
+			<match> ^.*/bin/wad . 0
+			<eval> echom g:outstr
+			gdbserver :444 --attach $<g:outstr[0:2]>
+		}}}
+
+	linux_gdb {{{2
+		<attach> $<w:pane_gdb>
+
+		gdb sysinit/init
+		<match> $<w:gdb_prompt>
+		target remote $<w:addr_box>:444
+		br abort
+		br wad_http_cache.c:16933
+		handle SIGTRAP noprint nostop
+		continue
+	}}}
+
+}}}
+
+tenablees {{1
+	attach> $<w:pane_log>
+	ls
+	<match> 10vd.out .*
+	<case> |config| ls -l $<g:outstr2>
+}}}
+
