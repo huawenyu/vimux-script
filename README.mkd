@@ -56,6 +56,9 @@ _Notes:_
 
 The more example is available [online](https://raw.github.com/huawenyu/vimux-script/master/example.txt).
 
+## Debug
+let let g:decho_enable = 1
+
 ## Todo lists
 
 - [ ] Attach tmux.windows mode
