@@ -4,19 +4,22 @@ Vim+Tmux+vimux-script: use vim as tmux controller, and vimux-script language int
 
 This plugin is base on [vimux](https://github.com/benmills/vimux), a plugin that lets you send input to tmux.
 
-My goal with vimux-script is to make scriptable auto interacting with tmux from vim effortless. By default you can `:call vimuxscript#ExecuteGroupByname('embedded_status')` to execute a function-like script which begin-with `{{{#` and end-with `}}}` :
+My goal with vimux-script is to make scriptable auto interacting with tmux from vim effortless.
+By default you can `:call vimuxscript#ExecuteGroupByname('embedded_status')` to execute a function-like script which begin-with `{{{#` and end-with `}}}` :
 
 ```
 embedded_status {{{1
-" tmux's pane index, show by prefix-q
-" <attach> means send the command to that tmux pane shell
-<attach> 2
-telnet 10.1.1.124
-" user:admin, and password is empty
-admin
-<Enter>
-" the embedded box's command
-get system status
+    " tmux's pane index, show by prefix-q
+    " <attach> means send the command to that tmux pane shell
+    <attach> 2
+    telnet 10.1.1.124
+
+    " user:admin, and password is empty
+    admin
+    <Enter>
+
+    " the embedded box's command
+    get system status
 }}}
 ```
 
@@ -55,6 +58,17 @@ _Notes:_
 ## Usage
 
 The more example is available [online](https://raw.github.com/huawenyu/vimux-script/master/example.txt).
+
+### Execute The Selected Lines
+
+  1. use vim open a text file
+  2. attach current vim to another tmux's pane by the pane's number
+    :VimuxAttach <TAB>
+  3. In vim, visual select serveral lines which we want send them to the destination pane
+  4. if have selected lines,    :call vimuxscript#ExecuteSelection(1)
+  5. if only send current line, :call vimuxscript#ExecuteSelection(0)
+
+### Execute Group By Name
 
 ## Debug
 let let g:decho_enable = 1
