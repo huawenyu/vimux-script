@@ -58,6 +58,9 @@ _Notes:_
 ## Usage
 
 The more example is available [online](https://raw.github.com/huawenyu/vimux-script/master/example.txt).
+### Prerequirement
+Firstly, we should use tmux to get 4 panes in current terminal screen. So we have pane number 1,2,3,4,  
+If together with the windows number, we have pane like: 1.1, 1.2, 1.3, 1.4
 
 ### Execute The Selected Lines
 
