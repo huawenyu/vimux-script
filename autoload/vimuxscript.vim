@@ -28,7 +28,7 @@ function! vimuxscript#ExecuteSelection(sel)
 
         let i = 0
         let l_len = len(lines) - 1
-        call vimux#VimuxOpenRunner()
+        "call vimux#VimuxOpenRunner()
         if (l_len == 0)
             call vimux#Run(lines[i])
         else
