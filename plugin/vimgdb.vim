@@ -375,7 +375,9 @@ function s:Gdb_refresh_source(name, line)
 			let src = nr
 			let g:curr_src = "e! +".a:line." ".a:name
 			silent exec g:curr_src
-			set cursorline
+			BookmarkClear
+			BookmarkToggle
+			"set cursorline
 		endif
 	endfor
 	silent exec currentWinNr . 'wincmd w'
@@ -393,12 +395,14 @@ function s:Gdb_refresh_all(name, line)
 		let fname = bufname(winbufnr(0))
 		if gdb_dir && match(fname, g:tmux_gdb_dir) > -1
 			silent e!
-			set nocursorline
+			"set nocursorline
 		elseif src == 0
 			let src = nr
 			let g:curr_src = "e! +".a:line." ".a:name
 			silent exec g:curr_src
-			set cursorline
+			BookmarkClear
+			BookmarkToggle
+			"set cursorline
 		endif
 	endfor
 	silent exec currentWinNr . 'wincmd w'
@@ -420,9 +424,9 @@ function s:Gdb_refresh_all(name, line)
 	"call setqflist(new_list, 'r')
 	"execute "norm `P"
 
-	"if filereadable(s:gdb_buf_breakpoints)
-	"	exec "lgetfile " . s:gdb_buf_breakpoints
-	"endif
+	if filereadable(s:gdb_buf_breakpoints)
+		exec "lgetfile " . s:gdb_buf_breakpoints
+	endif
 endfun
 
 function s:GdbMode_complete(A, L, P)
