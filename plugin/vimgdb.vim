@@ -374,9 +374,9 @@ function s:Gdb_refresh_source(name, line)
 		elseif src == 0
 			let src = nr
 			let g:curr_src = "e! +".a:line." ".a:name
-			silent exec g:curr_src
-			BookmarkClear
-			BookmarkToggle
+			silent! exec g:curr_src
+			silent! BookmarkClear
+			silent! BookmarkToggle
 			"set cursorline
 		endif
 	endfor
@@ -399,9 +399,9 @@ function s:Gdb_refresh_all(name, line)
 		elseif src == 0
 			let src = nr
 			let g:curr_src = "e! +".a:line." ".a:name
-			silent exec g:curr_src
-			BookmarkClear
-			BookmarkToggle
+			silent! exec g:curr_src
+			silent! BookmarkClear
+			silent! BookmarkToggle
 			"set cursorline
 		endif
 	endfor
