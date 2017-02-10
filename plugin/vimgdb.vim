@@ -451,8 +451,8 @@ function s:Gdb_shortcuts()
 	nmap <silent> <F10>	 :call <SID>Gdb_command("run")<CR>
 endfunction
 
-command! -nargs=* -complete=custom,<SID>GdbMode_complete GdbMode call <SID>Gdb_interf_init(<f-args>)
-command! -nargs=* GdbAttach call <SID>Gdb_attach(<f-args>)
-command! -nargs=* GdbRefresh call <SID>Gdb_refresh_all(<f-args>)
-command! -nargs=* GdbCmd call <SID>Gdb_command(<f-args>)
+command! -nargs=* -complete=custom,<SID>GdbMode_complete GdbOldMode call <SID>Gdb_interf_init(<f-args>)
+command! -nargs=* GdbOldAttach call <SID>Gdb_attach(<f-args>)
+command! -nargs=* GdbOldRefresh call <SID>Gdb_refresh_all(<f-args>)
+command! -nargs=* GdbOldCmd call <SID>Gdb_command(<f-args>)
 "nmap <silent> <F2> 	 :GdbMode<CR>
