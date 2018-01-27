@@ -1,3 +1,8 @@
+if !exists("s:init")
+    let s:init = 1
+    silent! let s:log = logger#getLogger(expand('<sfile>:t'))
+endif
+
 " @return valid check use empty()
 function! vimuxscript#_TmuxInfoRefresh()
     if !exists("g:VimuxRunnerIndex")
@@ -204,17 +209,17 @@ function! vimuxscript#_Capture(hist_pos, ...)
 
         let tmux_str = " -S " . (curr_pos[2] - delta + 1)
                     \ . " -t " . g:VimuxRunnerIndex
-        call Decho("delta=", delta, "hist=", a:hist_pos, " curr=", curr_pos)
+        silent! call s:log.trace("delta=", delta, "hist=", a:hist_pos, " curr=", curr_pos)
     elseif !empty(curr_pos)
         let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
                     \ . " -t " . g:VimuxRunnerIndex
     endif
 
-    Decho "wilson save-buff cmd-str " . tmux_str
+    silent! call s:log.trace('save-buff cmd-str '. tmux_str)
     if !empty(tmux_str)
         let g:output = vimux#_VimuxTmux("capture-pane -p" . tmux_str)
 
-        Decho "wilson save-buff args " . a:0
+        silent! call s:log.trace('save-buff args: '. a:0)
         if g:VimuxDebug || a:0
             " So we can check the output by: tmux show-buff <or> check the file
             call vimux#_VimuxTmux("capture-pane " . tmux_str)
@@ -223,12 +228,12 @@ function! vimuxscript#_Capture(hist_pos, ...)
             if a:0
                 let fname = a:1
             endif
-            Decho "wilson save-buff to " . fname
+            silent! call s:log.trace('save-buff to '. fname)
             call vimux#_VimuxTmux("save-buffer ".fname)
             "call vimux#_VimuxTmux("delete-buffer")
         endif
 
-        Decho g:output
+        silent! call s:log.trace('Output: '. g:output)
         return g:output
     endif
 
@@ -246,6 +251,7 @@ endfunction
 " <match> <case>
 " <eval>
 function! vimuxscript#_ExecuteInnnerAction(cmdline)
+    let l:__func__ = substitute(expand('<sfile>'), '.*\(\.\.\|\s\)', '', '')
     let cmdline = vimuxscript#_ParseVars(a:cmdline)
     let params = vimuxscript#_GetParams(cmdline)
 
@@ -253,7 +259,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
         return -1
     elseif match(cmdline, "^<let>") > -1
         execute "let " . params
-        Decho "wilson let " . params
+        silent! call s:log.trace(l:__func__, 'let : '. params)
         return 0
     elseif match(cmdline, "^<info>") > -1
         echom "Info:\n"
@@ -317,7 +323,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
             let out_lines = split(g:output, "\n")
             for out_line in out_lines
                 let g:outstr = matchstr(out_line, params)
-                Decho "out_line=" . out_line . " params=" . params. " result[g:outstr]=" . g:outstr
+                silent! call s:log.trace(l:__func__, "out_line=" . out_line . " params=" . params. " result[g:outstr]=" . g:outstr)
                 if !empty(g:outstr)
                     break
                 endif
@@ -325,7 +331,7 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
 
             if empty(g:outstr)
                 let g:outstr = matchstr(g:output, params)
-                Decho "g:output=" . g:output . " params=" . params. " result[g:outstr]=" . g:outstr
+                silent! call s:log.trace(l:__func__, "g:output=" . g:output . " params=" . params. " result[g:outstr]=" . g:outstr)
             endif
 
             if empty(g:outstr)
@@ -369,13 +375,14 @@ function! vimuxscript#_ExecuteInnnerAction(cmdline)
 endfunction
 
 function! vimuxscript#_ParseVars(cmdline_)
+    let l:__func__ = substitute(expand('<sfile>'), '.*\(\.\.\|\s\)', '', '')
     if empty(a:cmdline_)
         return 0
     endif
     let cmdline = a:cmdline_
 
     " solve variable
-    Decho 'wilson executecmd: ' . cmdline
+    silent! call s:log.trace(l:__func__, "executecmd=". cmdline)
     while match(cmdline, "$<.*>") > -1
         let varstr_ = matchstr(cmdline, "$<.*>")
         let varstr = varstr_[2:-2]
@@ -386,9 +393,9 @@ function! vimuxscript#_ParseVars(cmdline_)
             redir END
 
             let eval_out = strtrans(eval_out_)
-            Decho "wilson: ".eval_out. " ". varstr_
+            silent! call s:log.trace(l:__func__, "eval: ".eval_out. " ". varstr_)
             let cmdline = substitute(cmdline, "$<.*>", eval_out[2:], "")
-            Decho "wilson: ".cmdline
+            silent! call s:log.trace(l:__func__, "cmd: ".cmdline)
         endif
     endwhile
 

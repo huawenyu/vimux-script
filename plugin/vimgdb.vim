@@ -9,7 +9,8 @@
 
 " Prevent multiple loading, allow commenting it out
 if exists("loaded_vimgdb")
-	finish
+  finish
+  silent! let s:log = logger#getLogger(expand('<sfile>:t'))
 endif
 
 let loaded_vimgdb = 1
@@ -235,7 +236,7 @@ function s:Gdb_command(cmd, ...)
 		let hist_pos = vimuxscript#_TmuxInfoRefresh()
 
 		call vimux#Run(cmd_str)
-		call Decho("wilson try to call catpure to file ", s:gdb_capture)
+                silent! call s:log.trace('gdb_capture: '. s:gdb_capture)
 
 		if exists("a:0") && a:0 > 0
 			for arg in a:000
