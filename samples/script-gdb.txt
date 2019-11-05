@@ -1,0 +1,99 @@
+init {{{1
+	<let> w:addr_box = '10.1.2.124'
+	<let> w:addr_tftp = '10.1.2.1'
+
+	<let> w:pane_log = 2
+	<let> w:pane_box = 3
+	<let> w:pane_gdb = 4
+}}}
+
+routine {{{1
+	box_log {{{2
+		<attach> $<w:pane_log>
+		plink -telnet $<w:addr_box> | tee /tmp/log.tel
+		admin
+		<Enter>
+
+		diag debug console no-user-log-msg enable
+		diag debug app wad -1
+		diag debug enable
+	}}}
+
+	box_image {{{2
+		<call> box_telnet
+		#exec restore image tftp image-10vd.out $<w:addr_tftp>
+		<match> Do you want to continue?
+		y
+	}}}
+
+	box_crash {{{2
+		<call> box_telnet
+		diag debug crash read
+	}}}
+
+	box_telnet {{{2
+		<attach> $<w:pane_box>
+		telnet $<w:addr_box>
+		admin
+		<Enter>
+	}}}
+}}}
+
+gdb_debug {{{1
+	all {{{2
+		<call> box_log
+		<call> box_gdbserver_init
+		<call> box_gdbserver_attach
+		<call> linux_gdb
+	}}}
+
+	all_log {{{2
+		<call> box_log
+
+		# Caputre net
+		<attach> $<w:pane_gdb>
+		tshark -i eth0 -i vmnet1 -w /tmp/pcap.1
+
+		# Check crash
+		<call> box_crash
+		<label> check_again
+		diag debug crash read
+		<goto> check_again
+	}}}
+
+	box_gdbserver {{{2
+		box_gdbserver_init {{{3
+			<call> box_telnet
+			diag debug console no-user-log-msg enable
+			diag test app wad 2200
+			diag test app wad 7
+			<match> Set watchdog .*\.
+			<case> |enable.| diag test app wad 7
+			sys sh
+		}}}
+
+		box_gdbserver_attach {{{3
+			<attach> $<w:pane_box>
+
+			ps | grep wad
+			<match> ^.*/bin/wad 6 0
+			<eval> echom g:outstr
+			gdbserver :444 --attach $<g:outstr[0:2]>
+		}}}
+
+	linux_gdb {{{2
+		<attach> $<w:pane_gdb>
+		target remote $<w:addr_box>:444
+		br wad_rtmpt_create_request_line
+		continue
+	}}}
+
+}}}
+
+test {{{1
+	<attach> $<w:pane_log>
+	ls
+	<match> 10vd.out .*
+	<case> |config| ls -l $<g:outstr2>
+}}}
+
