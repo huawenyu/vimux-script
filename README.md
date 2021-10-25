@@ -49,12 +49,13 @@ getstatus {{{1
 
 ## Install
 
-- Only worder under tmux (version > 1.5)
 - Install this vim plug
 ```vim
     " With **[vim-plug](https://github.com/junegunn/vim-plug)**, add to your `.vimrc`:
     Plug 'huawenyu/vimux-script'
 ```
+- Only worker under tmux (version > 1.5)
+  Auto send the script text to tmux another pane
 
 ## Usage
 
