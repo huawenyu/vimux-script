@@ -55,7 +55,8 @@ getstatus {{{1
     Plug 'huawenyu/vimux-script'
 ```
 - Only worker under tmux (version > 1.5)
-  Auto send the script text to tmux another pane
+
+    Auto send the script text to tmux another pane
 
 ## Usage
 
