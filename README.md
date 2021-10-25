@@ -77,8 +77,8 @@ If together with the windows number, we have pane like: 1.1, 1.2, 1.3, 1.4
 We have a calltrace file `calltrace.txt` and the bin file `a.out`, and want to send gdb to decode the the backtrace automatically.
 
 1. Open tmux window, then create two panes:
-   the 1st pane: vim calltrace.txt
-   the 2nd pane: gdb a.out
+- the 1st pane: vim calltrace.txt
+- the 2nd pane: gdb a.out
 
 2. Using @begin, @end to define the script region
 Setting it in the default `init` group, like:
