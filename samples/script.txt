@@ -1,7 +1,7 @@
 # sample 1: shell cmd and interact with user
 #
 test example {{{1
-# comment begin with #
+## comment begin with ##
 # group start from {{{<number>
 # not begin with eval will send to TmuxRunner to execute
 ls -lrt
@@ -48,3 +48,57 @@ diag test app wad 7
 diag test app wad $<g:outstr[13:-2]>
 
 }}}
+
+
+# new sample 3 vimscript
+login box {{{1
+# comment
+
+# region start
+//@begin "begin:"
+//@end "end:"
+
+begin:
+	# oneline script
+	//@vim let w:name = "testcase3"
+
+	# script block
+	@vim let w:pid = 303
+	@vimbegin
+	let w:num = 1
+	while w:num <= 20
+		let w:num = w:num + 1
+		call VimSend("wilson "..w:num.." pid= "..w:pid)
+	endwhile
+	@vimend
+
+	# @match @action keys
+	//@match 
+
+	//@label
+	//@goto
+end:
+}}}
+
+
+# new sample 4
+init {{{1
+@begin Call Trace:
+@end Detaching from target
+@begin_cmd print '---'
+@end_cmd print '===='
+@match "^[" => "0xx$xx0ilwilson001 *0x"
+}}}
+
+login box {{{1
+Call Trace:
+[<00007fe40f45cde0>]
+[<0000000001880112>]
+[<000000000190d6a6>]
+[<0000000000448b18>]
+[<000000000044f4f1>]
+[<00007fe40f388eaa>]
+[<0000000000444e5a>]
+Detaching from target...
+}}}
+

@@ -35,3 +35,6 @@ let g:VimuxGroupCaptureLine = 4
 " If clear vim command line, use 'q C-u'
 let g:VimuxResetSequence = "C-l"
 
+func! VimSend(cmdstr)
+    call vimuxscript#_ExecuteCmd(a:cmdstr)
+endf
