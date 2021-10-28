@@ -65,18 +65,22 @@ func s:StateVim.handleLine()
     let __func__ = 's:StateVim.handleLine() '
     silent! call s:log.trace(__func__, 'vim: '..s:ctx.exec_cmd)
 
-    " " exec s:ctx.exec_cmd
-    " if len(g:vimuxCheckStopper)
-    "     if match(s:ctx.exec_cmd, ' '..g:vimuxCheckStopper) > -1
-    "         call add(s:ctx.exec_cmd_list, 'if g:vimuxStop | return | endif')
-    "     endif
-    "     if match(s:ctx.exec_cmd, 'sleep ') > -1
-    "         call add(s:ctx.exec_cmd_list, 'if g:vimuxStop | return | endif')
-    "     endif
-    " endif
+    " exec s:ctx.exec_cmd
+    if len(g:vimuxCheckStopper)
+        if match(s:ctx.exec_cmd, ' '..g:vimuxCheckStopper) > -1
+            call add(s:ctx.exec_cmd_list, 'if g:vimuxStop | return | endif')
+        endif
+        if match(s:ctx.exec_cmd, 'sleep ') > -1
+            call add(s:ctx.exec_cmd_list, 'if g:vimuxStop | return | endif')
+        endif
+    endif
 
     call add(s:ctx.exec_cmd_list, s:ctx.exec_cmd)
 endf
+
+" func! VimuxAsyncrun(timer)
+"     call execute(g:vimux_asyncrun)
+" endf
 
 func s:StateVim.done()
     let __func__ = 's:StateVim.done() '
@@ -87,8 +91,11 @@ func s:StateVim.done()
     silent! call s:log.trace(__func__, 'vim: '..vimcode)
 
     " exec vimcode
+    " " " call async#AsyncRunEngine(s:ctx.exec_cmd_list, 0, 0, 0)
+    " " call timer_start(100, {-> execute("call execute("..vimcode..")", "")})
+    " let g:vimux_asyncrun = vimcode
+    " call timer_start(, "VimuxAsyncrun")
     call execute(vimcode)
-    "call async#AsyncRunEngine(s:ctx.exec_cmd_list, 0, 0, 0)
 endf
 
 
