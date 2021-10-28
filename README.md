@@ -22,11 +22,12 @@ top {{{1
     @attach 2
 
 	@vimbegin
-	let w:num = 1
-	while w:num <= 20
-		let w:num = w:num + 1
+	let num = 1
+	while num <= 20
+		let num += 1
 		call VimSend('top -bn1 | head')
         sleep 1
+        redraw
 	endwhile
 	@vimend
 }}}
@@ -81,19 +82,19 @@ We have a calltrace file `calltrace.txt` and the bin file `a.out`, and want to s
 - the 2nd pane: gdb a.out
 
 2. Using @begin, @end to define the script region
-Setting it in the default `init` group, like:
+Setting it in the default `scriptinit` group, like:
 ```python
-init {{{1
+scriptinit {{{1
 @begin Call Trace:
 @end Detaching from target
 }}}
 ```
 
 3. Change `[<00007f2f035a89d7>]` to `l *0x00007f2f035a89d7`
-Add a match-then-do-macro to change the script text line to the default `init` group:
+Add a match-then-do-macro to change the script text line to the default `scriptinit` group:
 
 ```python
-init {{{1
+scriptinit {{{1
 @match "^[" => "0xx$xx0il *0x"
 }}}
 ```
@@ -103,11 +104,14 @@ init {{{1
     $ cat ./calltrace.txt
 
 ```python
-init {{{1
+scriptinit {{{1
 @begin Call Trace:
 @end Detaching from target
 @begin_cmd #----------------------------------
+@begin_cmd <Enter>
+@begin_cmd set listsize 3
 @end_cmd   #==================================
+@end_cmd <Enter>
 @match "^[" => "0xx$xx0il *0x"
 }}}
 
@@ -150,7 +154,7 @@ Target detached
 
 1. use vim open a script like this which must begin-with `{{{#` and end-with `}}}`:
 ```
-init {{{1
+scriptinit {{{1
 	@vim let w:pane_log = '1.4'
 	@vim let w:pane_box = '1.3'
 	@vim let w:pane_gdb = '1.4'
@@ -173,7 +177,7 @@ readcrash {{{1
 ```
 2. In vim, put our cusor on `decode_debug_acsm_crash` which is the script group's name
 3. Then :call vimuxscript#ExecuteGroup()
-4. If the script have variable like `$<w:pane_box>`, it will auto search the `init` group.
+4. If the script have variable like `$<w:pane_box>`, it will auto search the `scriptinit` group.
 
 ### vim Shortkeys
 ```
@@ -188,7 +192,7 @@ let let g:decho_enable = 1
 ## Todo lists
 
 - [x] Attach tmux.windows mode
-- [x] Auto 'init' per script files
+- [x] Auto 'scriptinit' per script files
 - [ ] Add <file>
 - [ ] Script: decode crash log
 - [ ] AsyncCommand Implement

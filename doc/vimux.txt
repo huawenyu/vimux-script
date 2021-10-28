@@ -315,12 +315,12 @@ Default: 1
 
 ------------------------------------------------------------------------------
                                              *VimuxConfiguration_reset_sequence*
-2.4 g:VimuxResetSequence~
+2.4 g:vimuxResetSequence~
 
 The keys sent to the runner pane before running a command. By default it sends
 `q` to make sure the pane is not in scroll-mode and `C-u` to clear the line.
 
-  let VimuxResetSequence = ""
+  let vimuxResetSequence = ""
 
 Default: "q C-u"
 

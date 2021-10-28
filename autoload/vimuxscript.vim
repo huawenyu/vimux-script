@@ -21,8 +21,8 @@ let s:state = s:enum(['begin','end','vimline','vimbegin', 'vimend'])
 let s:ctx = { 'init': 0,
             \ 'begin': "{{{\\d\\+",
             \ 'end': "}}}",
-            \ 'begin_cmd': "",
-            \ 'end_cmd': "",
+            \ 'begin_cmd': [],
+            \ 'end_cmd': [],
             \ 'matcher': {},
             \ 'state': {},
             \
@@ -64,16 +64,31 @@ endf
 func s:StateVim.handleLine()
     let __func__ = 's:StateVim.handleLine() '
     silent! call s:log.trace(__func__, 'vim: '..s:ctx.exec_cmd)
-    " exec s:ctx.exec_cmd
+
+    " " exec s:ctx.exec_cmd
+    " if len(g:vimuxCheckStopper)
+    "     if match(s:ctx.exec_cmd, ' '..g:vimuxCheckStopper) > -1
+    "         call add(s:ctx.exec_cmd_list, 'if g:vimuxStop | return | endif')
+    "     endif
+    "     if match(s:ctx.exec_cmd, 'sleep ') > -1
+    "         call add(s:ctx.exec_cmd_list, 'if g:vimuxStop | return | endif')
+    "     endif
+    " endif
+
     call add(s:ctx.exec_cmd_list, s:ctx.exec_cmd)
 endf
 
 func s:StateVim.done()
     let __func__ = 's:StateVim.done() '
+    if g:vimuxAutoRedraw
+        call add(s:ctx.exec_cmd_list, 'redraw!')
+    endif
     let vimcode = join(s:ctx.exec_cmd_list, ' | ')
     silent! call s:log.trace(__func__, 'vim: '..vimcode)
+
     " exec vimcode
     call execute(vimcode)
+    "call async#AsyncRunEngine(s:ctx.exec_cmd_list, 0, 0, 0)
 endf
 
 
@@ -200,7 +215,7 @@ function! vimuxscript#_Exe(cmd) abort
 endfunction
 
 function! vimuxscript#CallName(groupname)
-    if a:groupname !=# g:VimuxGroupInit && !vimux#Prepare()
+    if a:groupname !=# g:vimuxInitName && !vimux#Prepare()
         echom "No VimxOpenRunner."
         return
     endif
@@ -215,14 +230,14 @@ function! vimuxscript#CallName(groupname)
         let region = vimuxscript#_GetRegion(line, -1)
         if !empty(region)
             let save_line = s:ctx.cur_line
-            call vimuxscript#_ExecuteRegion(region[0], region[1])
+            call vimuxscript#_ExecuteRegion(a:groupname, region[0], region[1])
             let s:ctx.cur_line = save_line
             call cursor(s:ctx.cur_line, 1)
             return
         endif
     endif
 
-    if a:groupname !=# g:VimuxGroupInit
+    if a:groupname !=# g:vimuxInitName
         echoerr 'Execute Byname fail: ' . a:groupname
     endif
 endfunction
@@ -286,13 +301,14 @@ function! vimuxscript#CallRegion(init)
         return
     endif
 
+    let g:vimuxStop = 0
     let cur_l = line('.')
     silent! call s:log.trace(__func__, "before init")
     call vimuxscript#_Init(a:init)
     silent! call s:log.trace(__func__, "after init")
     let region = vimuxscript#_GetRegion(cur_l, cur_l)
     if !empty(region)
-        call vimuxscript#_ExecuteRegion(region[0], region[1])
+        call vimuxscript#_ExecuteRegion('current', region[0], region[1])
     endif
 endfunction
 
@@ -307,7 +323,7 @@ function! vimuxscript#_Capture(hist_pos, ...)
                     \ . " -t " . g:VimuxRunnerIndex
         silent! call s:log.trace("delta=", delta, "hist=", a:hist_pos, " curr=", curr_pos)
     elseif !empty(curr_pos)
-        let tmux_str = " -S " . (curr_pos[2] - g:VimuxGroupCaptureLine + 1)
+        let tmux_str = " -S " . (curr_pos[2] - g:vimuxRunCaptureLines + 1)
                     \ . " -t " . g:VimuxRunnerIndex
     endif
 
@@ -337,8 +353,8 @@ function! vimuxscript#_Capture(hist_pos, ...)
 endfunction
 
 function! vimuxscript#_NoWait()
-    let g:VimuxGroupCaptureWait = 0
-    let g:VimuxGroupCommandPause = 0
+    let g:vimuxRunCaptureWait = 0
+    let g:vimuxRunSleep = 0
 endfunction
 
 
@@ -368,10 +384,11 @@ func! vimuxscript#_ExecuteInnnerAction(cmdline)
         silent! call s:log.trace(__func__, 'end: '. params)
         return s:ret.next
     elseif match(cmdline, "^@begin_cmd ") > -1
-        let s:ctx.begin_cmd = params
+        call add(s:ctx.begin_cmd, params)
         return s:ret.next
     elseif match(cmdline, "^@end_cmd ") > -1
-        let s:ctx.end_cmd = params
+        call add(s:ctx.end_cmd, params)
+        return s:ret.next
         return s:ret.next
     elseif match(cmdline, "^@vim ") > -1
         exec params
@@ -395,7 +412,7 @@ func! vimuxscript#_ExecuteInnnerAction(cmdline)
                     \."  output[".s:ctx.cmd_out[-20:]."]\n\n"
         return s:ret.next
     elseif match(cmdline, "^@capture ") > -1
-        let g:VimuxGroupCaptureLine = 0 + params
+        let g:vimuxRunCaptureLines = 0 + params
         return s:ret.next
     elseif match(cmdline, "^@attach ") > -1
         call vimux#TmuxAttach(params)
@@ -450,8 +467,8 @@ func! vimuxscript#_ExecuteInnnerAction(cmdline)
             while empty(s:ctx.cmd_out) && l_count < 100
                 let l_count += 1
 
-                if g:VimuxGroupCaptureWait > 0
-                    exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                if g:vimuxRunCaptureWait > 0
+                    exec "sleep " . g:vimuxRunCaptureWait . "m"
                 endif
                 call vimuxscript#_Capture(g:hist_pos)
                 let g:hist_pos = vimuxscript#_TmuxInfoRefresh()
@@ -476,8 +493,8 @@ func! vimuxscript#_ExecuteInnnerAction(cmdline)
             endif
 
             if empty(s:ctx.cmd_outstr)
-                if g:VimuxGroupCaptureWait > 0
-                    exec "sleep " . g:VimuxGroupCaptureWait . "m"
+                if g:vimuxRunCaptureWait > 0
+                    exec "sleep " . g:vimuxRunCaptureWait . "m"
                 endif
                 let s:ctx.cmd_out = ""
             endif
@@ -580,15 +597,15 @@ func! vimuxscript#_ExecuteCmd(cmdline_)
         call vimux#VimuxSendText(data)
         call vimux#VimuxSendKeys("Enter")
 
-        if g:VimuxGroupCommandPause > 0
-            exec "sleep " . g:VimuxGroupCommandPause . "m"
+        if g:vimuxRunSleep > 0
+            exec "sleep " . g:vimuxRunSleep . "m"
         endif
         return 1
     else
         if vimux#Run(cmdline)
             let capture = 1
-            if g:VimuxGroupCommandPause > 0
-                exec "sleep " . g:VimuxGroupCommandPause . "m"
+            if g:vimuxRunSleep > 0
+                exec "sleep " . g:vimuxRunSleep . "m"
             endif
             return 1
         endif
@@ -604,7 +621,7 @@ func! vimuxscript#_Init(forceInit)
     endif
     if s:ctx.init | return | endif
     let s:ctx.init = 1
-    call vimuxscript#CallName(g:VimuxGroupInit)
+    call vimuxscript#CallName(g:vimuxInitName)
 endf
 
 " @return -1 stop
@@ -617,10 +634,10 @@ function! vimuxscript#_ExecuteOneLine(cmdline_)
     silent! call s:log.trace(__func__, cmdline)
     if !exists("g:vimuxscript_init")
         let g:vimuxscript_init = getftime(expand('%'))
-        call vimuxscript#CallName(g:VimuxGroupInit)
+        call vimuxscript#CallName(g:vimuxInitName)
     elseif g:vimuxscript_init != getftime(expand('%'))
         let g:vimuxscript_init = getftime(expand('%'))
-        call vimuxscript#CallName(g:VimuxGroupInit)
+        call vimuxscript#CallName(g:vimuxInitName)
     endif
 
     " Trim space and tab
@@ -649,7 +666,7 @@ function! vimuxscript#_ExecuteOneLine(cmdline_)
 endfunction
 
 
-function! vimuxscript#_ExecuteRegion(start, end)
+function! vimuxscript#_ExecuteRegion(grpname, start, end)
     let __func__ = 'vimuxscript#_ExecuteRegion() '
 
     if !vimux#Prepare()
@@ -672,16 +689,26 @@ function! vimuxscript#_ExecuteRegion(start, end)
 
     let count = 0
     let s:ctx.cur_line = a:start
-    call vimuxscript#_ExecuteOneLine(s:ctx.begin_cmd)
+
+    if a:grpname !=# g:vimuxInitName
+        for cmd in s:ctx.begin_cmd
+            call vimuxscript#_ExecuteOneLine(cmd)
+        endfor
+    endif
+
     while (s:ctx.cur_line <= a:end && count < s:ctx.max_line)
         let count += 1
         let cmd = getline(s:ctx.cur_line)
-        call cursor(s:ctx.cur_line, 1)
+        if g:vimuxRunFocus
+            call cursor(s:ctx.cur_line, 1)
+        endif
         let s:ctx.cur_line += 1
         "echom cmd
 
         let g:last_cmdstr = s:ctx.exec_cmd
         let s:ctx.exec_cmd = ""
+
+        if g:vimuxStop | break | endif
 
         let ret = vimuxscript#_ExecuteOneLine(cmd)
         if (ret == 0)
@@ -692,7 +719,16 @@ function! vimuxscript#_ExecuteRegion(start, end)
             break
         endif
     endwhile
-    call vimuxscript#_ExecuteOneLine(s:ctx.end_cmd)
 
-endfunction
+    if a:grpname !=# g:vimuxInitName
+        for cmd in s:ctx.end_cmd
+            call vimuxscript#_ExecuteOneLine(cmd)
+        endfor
+    endif
+
+endf
+
+func! vimuxscript#Stop()
+    let g:vimuxStop = 1
+endf
 

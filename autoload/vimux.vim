@@ -73,7 +73,7 @@ function! vimux#Run(command, ...)
 
   let g:VimuxLastCommand = a:command
 
-  "let resetSequence = vimux#_VimuxOption("g:VimuxResetSequence", "q C-u")
+  "let resetSequence = vimux#_VimuxOption("g:vimuxResetSequence", "q C-u")
   "call vimux#VimuxSendKeys(resetSequence)
 
   " Special keys
