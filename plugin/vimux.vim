@@ -33,7 +33,7 @@ command VimuxTogglePane :call vimux#VimuxTogglePane()
 " Global Vars {{{1
 let g:vimuxInitName        = get(g:, 'vimuxInitName',        "scriptinit")
 let g:vimuxRunLineMax      = get(g:, 'vimuxRunLineMax',      1000)
-let g:vimuxRunSleep        = get(g:, 'vimuxRunSleep',        30)
+let g:vimuxRunPause        = get(g:, 'vimuxRunPause',        20)
 let g:vimuxRunCaptureWait  = get(g:, 'vimuxRunCaptureWait',  100)
 let g:vimuxRunCaptureLines = get(g:, 'vimuxRunCaptureLines', 4)
 let g:vimuxResetSequence   = get(g:, 'vimuxResetSequence',   "C-l") | " If clear vim command line, use 'q C-u'

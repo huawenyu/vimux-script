@@ -354,7 +354,7 @@ endfunction
 
 function! vimuxscript#_NoWait()
     let g:vimuxRunCaptureWait = 0
-    let g:vimuxRunSleep = 0
+    let g:vimuxRunPause = 0
 endfunction
 
 
@@ -597,15 +597,15 @@ func! vimuxscript#_ExecuteCmd(cmdline_)
         call vimux#VimuxSendText(data)
         call vimux#VimuxSendKeys("Enter")
 
-        if g:vimuxRunSleep > 0
-            exec "sleep " . g:vimuxRunSleep . "m"
+        if g:vimuxRunPause > 0
+            exec "sleep " . g:vimuxRunPause . "m"
         endif
         return 1
     else
         if vimux#Run(cmdline)
             let capture = 1
-            if g:vimuxRunSleep > 0
-                exec "sleep " . g:vimuxRunSleep . "m"
+            if g:vimuxRunPause > 0
+                exec "sleep " . g:vimuxRunPause . "m"
             endif
             return 1
         endif
